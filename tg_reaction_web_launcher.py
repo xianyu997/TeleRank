@@ -19,7 +19,7 @@ from pathlib import Path
 
 APP_FILE = "tg_reaction_web.html"
 PREFERRED_PORT = 1717
-APP_VERSION = "2026-07-04-auto-links"
+APP_VERSION = "2026-07-05-matrix-link-fix"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
 ARCHIVE_ROOT = Path("D:/TelegramReactionRanker/Imports")
 WINDOWS_INVALID_NAME_CHARS = '<>:"/\\|?*'

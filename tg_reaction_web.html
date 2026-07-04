@@ -394,17 +394,22 @@
     .matrix-gallery {
       height: 100%;
       overflow: auto;
-      scroll-snap-type: y proximity;
       scrollbar-width: none;
       padding: clamp(8px, 1.2vmin, 14px);
     }
     .matrix-gallery::-webkit-scrollbar { width: 0; height: 0; }
-    .matrix-screen {
-      min-height: 100%;
+    .matrix-grid {
       column-width: clamp(150px, 18vw, 280px);
       column-gap: clamp(8px, 1.1vmin, 14px);
-      scroll-snap-align: start;
       padding-bottom: clamp(8px, 1.2vmin, 14px);
+    }
+    .matrix-loader {
+      display: grid;
+      place-items: center;
+      min-height: 96px;
+      color: rgba(255,255,255,.72);
+      font-size: 13px;
+      font-weight: 800;
     }
     .matrix-card {
       position: relative;
@@ -1081,8 +1086,7 @@
     const TELEGRAM_WEB_JUMP_URL = "https://web.telegram.org/k/#@tir10057";
     const HISTORY_KEY = "tgRankerImportHistory";
     const VIRTUAL_BUFFER = 4;
-    const MATRIX_BUFFER = 1;
-    const MATRIX_PAGE_SIZE = 48;
+    const MATRIX_BATCH_SIZE = 96;
     const state = {
       source: "",
       messages: [],
@@ -1096,7 +1100,7 @@
       topScore: 0,
       history: [],
       virtual: { itemHeight: 0, start: -1, end: -1, frame: 0 },
-      matrixVirtual: { screenHeight: 0, start: -1, end: -1, frame: 0 }
+      matrixVirtual: { rendered: 0, frame: 0 }
     };
     const $ = (id) => document.getElementById(id);
     const els = {
@@ -1705,10 +1709,31 @@
       }
       return "";
     }
+    function contextualTelegramLink(msg) {
+      const links = Array.isArray(msg?.links) ? msg.links : [];
+      let best = null;
+      links.forEach((link, index) => {
+        const href = normalizeHref(link?.href);
+        if (!href) return;
+        const entry = normalizeTelegramEntryLink(href) || resolveTelegramTargetUrl(href);
+        if (!entry || !/^https?:\/\/(?:t\.me|telegram\.me)\//i.test(entry)) return;
+        const text = `${link.text || ""} ${msg?.text || ""}`.replace(/\s+/g, " ").slice(0, 900);
+        let score = 500 - index;
+        if (telegramMessageParts(entry)) score += 800;
+        if (/会员|专属|订阅|加入|频道|直播群|备用|防丢|入口|VIP/i.test(text)) score += 180;
+        if (/huahua/i.test(entry)) score += 140;
+        if (/jisou|搜索|广告|推广/i.test(`${entry} ${text}`)) score -= 260;
+        if (/addlist/i.test(entry)) score -= 80;
+        if (/\/\+/i.test(entry)) score += 60;
+        if (/bot/i.test(entry) && !/会员|专属|订阅|VIP/i.test(text)) score -= 120;
+        if (!best || score > best.score) best = { link: entry, score };
+      });
+      return best?.link || "";
+    }
     function unifiedLinkForMessage(msg) {
       const handle = remapTelegramChannel(state.channelHandle || "");
       if (handle && /^\d+$/.test(String(msg.id || ""))) return `https://t.me/${handle}/${msg.id}`;
-      return messageSpecificLink(msg) || state.channelEntryLink || "";
+      return messageSpecificLink(msg) || contextualTelegramLink(msg) || state.channelEntryLink || "";
     }
     function applyImportResult({ source, messages, fileCount, mediaCount, statusPrefix, channelHandle = "", channelEntryLink = "" }) {
       state.source = source || "Telegram export";
@@ -2004,14 +2029,10 @@
     function galleryItemHeight() {
       return Math.max(360, Math.round(els.gallery.clientHeight || window.innerHeight || 720));
     }
-    function matrixScreenHeight() {
-      return Math.max(360, Math.round(els.matrixGallery.clientHeight || window.innerHeight || 720));
-    }
     function resetVirtualState() {
       state.virtual.start = -1;
       state.virtual.end = -1;
-      state.matrixVirtual.start = -1;
-      state.matrixVirtual.end = -1;
+      state.matrixVirtual.rendered = 0;
     }
     function renderGallery(reset = false) {
       cancelAnimationFrame(state.virtual.frame);
@@ -2051,12 +2072,31 @@
       cancelAnimationFrame(state.virtual.frame);
       state.virtual.frame = requestAnimationFrame(() => renderGallery(false));
     }
+    function renderMatrixCard(msg, index) {
+      const rank = index + 1;
+      const first = mediaItems(msg)[0];
+      const full = first?.full || "";
+      const thumb = first?.thumb || "";
+      const aspect = first?.aspect || 1;
+      const link = unifiedLinkForMessage(msg);
+      return `
+        <article class="matrix-card" style="--matrix-aspect:${aspect.toFixed(3)}">
+          <button class="matrix-media${full ? " media-open" : ""}" type="button" data-full="${esc(full)}" aria-label="preview rank ${rank}">
+            ${thumb ? `<img class="matrix-bg" src="${esc(thumb)}" alt="" loading="lazy" decoding="async"><img class="matrix-img" src="${esc(thumb)}" alt="rank ${rank}" loading="lazy" decoding="async">` : ""}
+          </button>
+          <div class="matrix-info">
+            <div class="matrix-line">#${rank} ${esc(msg.from || "-")}</div>
+            <div class="matrix-meta">${n(msg.total)} react${msg.mediaCount ? ` · ${n(msg.mediaCount)} photo${msg.mediaCount > 1 ? "s" : ""}` : ""}</div>
+            ${link ? `<button class="matrix-jump" type="button" data-jump-link="${esc(link)}">跳转</button>` : `<button class="matrix-jump" type="button" disabled>无链接</button>`}
+          </div>
+        </article>
+      `;
+    }
     function renderMatrix(reset = false) {
       cancelAnimationFrame(state.matrixVirtual.frame);
       if (reset) {
         els.matrixGallery.scrollTop = 0;
-        state.matrixVirtual.start = -1;
-        state.matrixVirtual.end = -1;
+        state.matrixVirtual.rendered = 0;
       }
       if (!state.rows.length) {
         const emptyTitle = state.messages.length ? "No matches" : "No data";
@@ -2064,46 +2104,26 @@
         els.matrixGallery.innerHTML = `<div class="empty"><div><strong>${emptyTitle}</strong><span>${emptyHint}</span></div></div>`;
         return;
       }
-      const screenHeight = matrixScreenHeight();
-      const totalScreens = Math.ceil(state.rows.length / MATRIX_PAGE_SIZE);
-      const currentScreen = Math.max(0, Math.floor(els.matrixGallery.scrollTop / screenHeight));
-      const startScreen = Math.max(0, currentScreen - MATRIX_BUFFER);
-      const endScreen = Math.min(totalScreens, currentScreen + MATRIX_BUFFER + 2);
-      if (state.matrixVirtual.start === startScreen && state.matrixVirtual.end === endScreen && state.matrixVirtual.screenHeight === screenHeight) return;
-      state.matrixVirtual = { ...state.matrixVirtual, screenHeight, start: startScreen, end: endScreen };
-      const screens = [];
-      for (let index = startScreen * MATRIX_PAGE_SIZE; index < endScreen * MATRIX_PAGE_SIZE && index < state.rows.length; index += MATRIX_PAGE_SIZE) {
-        const chunk = state.rows.slice(index, index + MATRIX_PAGE_SIZE);
-        screens.push(`
-          <section class="matrix-screen" style="min-height:${screenHeight}px">
-            ${chunk.map((msg, offset) => {
-              const rank = index + offset + 1;
-              const first = mediaItems(msg)[0];
-              const full = first?.full || "";
-              const thumb = first?.thumb || "";
-              const aspect = first?.aspect || 1;
-              const link = unifiedLinkForMessage(msg);
-              return `
-                <article class="matrix-card" style="--matrix-aspect:${aspect.toFixed(3)}">
-                  <button class="matrix-media${full ? " media-open" : ""}" type="button" data-full="${esc(full)}" aria-label="preview rank ${rank}">
-                    ${thumb ? `<img class="matrix-bg" src="${esc(thumb)}" alt="" loading="lazy" decoding="async"><img class="matrix-img" src="${esc(thumb)}" alt="rank ${rank}" loading="lazy" decoding="async">` : ""}
-                  </button>
-                  <div class="matrix-info">
-                    <div class="matrix-line">#${rank} ${esc(msg.from || "-")}</div>
-                    <div class="matrix-meta">${n(msg.total)} react${msg.mediaCount ? ` · ${n(msg.mediaCount)} photo${msg.mediaCount > 1 ? "s" : ""}` : ""}</div>
-                    ${link ? `<button class="matrix-jump" type="button" data-jump-link="${esc(link)}">跳转</button>` : `<button class="matrix-jump" type="button" disabled>无链接</button>`}
-                  </div>
-                </article>
-              `;
-            }).join("")}
-          </section>
-        `);
+      const nearBottom = els.matrixGallery.scrollTop + els.matrixGallery.clientHeight >= els.matrixGallery.scrollHeight - Math.max(240, els.matrixGallery.clientHeight * 1.2);
+      const current = state.matrixVirtual.rendered || 0;
+      let nextCount = reset || !current ? MATRIX_BATCH_SIZE : current;
+      if (nearBottom) nextCount += MATRIX_BATCH_SIZE;
+      nextCount = Math.min(state.rows.length, Math.max(MATRIX_BATCH_SIZE, nextCount));
+      if (!reset && current === nextCount) return;
+      const loaderHtml = nextCount < state.rows.length ? `<div class="matrix-loader">继续下滑加载更多</div>` : "";
+      const grid = els.matrixGallery.querySelector(".matrix-grid");
+      if (!reset && current && grid && nextCount > current) {
+        const cards = state.rows.slice(current, nextCount).map((msg, offset) => renderMatrixCard(msg, current + offset)).join("");
+        grid.insertAdjacentHTML("beforeend", cards);
+        els.matrixGallery.querySelector(".matrix-loader")?.remove();
+        if (loaderHtml) els.matrixGallery.insertAdjacentHTML("beforeend", loaderHtml);
+        state.matrixVirtual.rendered = nextCount;
+        requestAnimationFrame(() => applyImageFits(els.matrixGallery));
+        return;
       }
-      els.matrixGallery.innerHTML = `
-        <div class="virtual-spacer" style="height:${startScreen * screenHeight}px"></div>
-        ${screens.join("")}
-        <div class="virtual-spacer" style="height:${Math.max(0, (totalScreens - endScreen) * screenHeight)}px"></div>
-      `;
+      state.matrixVirtual.rendered = nextCount;
+      const cards = state.rows.slice(0, nextCount).map((msg, index) => renderMatrixCard(msg, index)).join("");
+      els.matrixGallery.innerHTML = `<div class="matrix-grid">${cards}</div>${loaderHtml}`;
       requestAnimationFrame(() => applyImageFits(els.matrixGallery));
     }
     function scheduleMatrixRender() {
@@ -2380,7 +2400,6 @@
       cancelAnimationFrame(resizeFrame);
       resizeFrame = requestAnimationFrame(() => {
         state.virtual.itemHeight = 0;
-        state.matrixVirtual.screenHeight = 0;
         renderGallery(false);
         renderMatrix(false);
         applyImageFits();

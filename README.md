@@ -6,7 +6,7 @@ Telegram 表情反馈排行查看器。把 Telegram Desktop 导出的聊天记�
 
 普通用户直接下载 EXE 即可：
 
-[下载 TGReactionRanker.exe](https://github.com/xianyu997/tg-reaction-ranker/releases/download/v2026.07.04-auto-links/TGReactionRanker.exe)
+[下载 TGReactionRanker.exe](https://github.com/xianyu997/tg-reaction-ranker/releases/download/v2026.07.05-matrix-link-fix/TGReactionRanker.exe)
 
 运行后会自动打开本地网页界面。软件本体是本地程序，不需要部署服务器。
 
