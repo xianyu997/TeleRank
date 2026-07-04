@@ -77,6 +77,16 @@ python -m venv .venv
 
 生成文件在 `dist\TGReactionRanker_fixed.exe`。发布时可以重命名为 `TGReactionRanker.exe`。
 
+## 支持作者
+
+如果这个工具帮到了你，可以自愿赞赏作者，用于激励我继续维护和改进项目。
+
+赞赏完全自愿，不影响软件使用，不构成购买服务、投资、募捐或任何收益承诺。
+
+<img src="docs/assets/wechat-pay.jpg" alt="微信支付赞赏码" width="360">
+
+更多说明见 [SUPPORT.md](SUPPORT.md)。
+
 ## 隐私说明
 
 软件只读取你本机选择的 Telegram 导出文件夹。导入后的副本默认保存在 `D:\TelegramReactionRanker\Imports`，不会主动上传聊天记录或图片。
