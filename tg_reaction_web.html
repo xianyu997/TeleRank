@@ -1,0 +1,2397 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TG Reaction Ranker</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #fff;
+      --ink: #172033;
+      --muted: #65758b;
+      --line: #dbe4ef;
+      --brand: #2383c4;
+      --brand2: #1d6ea6;
+      --soft: #eef5fb;
+      --warn: #a95709;
+      --shadow: 0 16px 40px rgba(24, 38, 56, .08);
+      --viewer-bg: #05070b;
+      --viewer-panel: rgba(255,255,255,.16);
+      --viewer-text: #fff;
+      --viewer-muted: rgba(255,255,255,.72);
+      --field-bg: #fff;
+    }
+    [data-theme="dark"] {
+      --bg: #05070b;
+      --panel: #101722;
+      --ink: #eef5ff;
+      --muted: #9aa8ba;
+      --line: #253142;
+      --brand: #38bdf8;
+      --brand2: #7dd3fc;
+      --soft: #182434;
+      --warn: #f59e0b;
+      --shadow: 0 16px 40px rgba(0, 0, 0, .28);
+      --viewer-bg: #05070b;
+      --viewer-panel: rgba(255,255,255,.14);
+      --viewer-text: #fff;
+      --viewer-muted: rgba(255,255,255,.72);
+      --field-bg: #0b1220;
+    }
+    [data-theme="light"] {
+      --viewer-bg: #f4f7fb;
+      --viewer-panel: rgba(23,32,51,.12);
+      --viewer-text: #172033;
+      --viewer-muted: rgba(23,32,51,.68);
+      --field-bg: #fff;
+    }
+
+    * { box-sizing: border-box; }
+    html {
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font: 14px/1.5 "Segoe UI", "Microsoft YaHei UI", Arial, sans-serif;
+      height: 100dvh;
+      width: 100%;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+    }
+    button, input, select { font: inherit; }
+    button { border: 0; cursor: pointer; }
+
+    .topbar {
+      position: relative;
+      top: 0;
+      z-index: 5;
+      background: rgba(255,255,255,.94);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+    }
+    [data-theme="dark"] .topbar {
+      background: rgba(16,23,34,.94);
+    }
+    .topbar-inner {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .brand > div:last-child { min-width: 0; }
+    .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #38bdf8, #1d6ea6);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+    }
+    h1 { margin: 0; font-size: 18px; line-height: 1.15; }
+    .subtitle { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+    .btn {
+      min-height: 36px;
+      padding: 8px 12px;
+      border-radius: 7px;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--brand2); }
+    .btn.secondary { background: var(--soft); color: var(--ink); border: 1px solid var(--line); }
+    .btn.secondary:hover { background: #e4edf6; }
+    [data-theme="dark"] .btn.secondary:hover { background: #223146; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .hidden-input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+
+    main {
+      width: 100%;
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 16px 18px 28px;
+      min-height: 0;
+    }
+    .page[hidden] { display: none; }
+    .viewer-layout {
+      position: relative;
+      display: grid;
+      grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+      max-width: none;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--viewer-bg);
+    }
+    .import-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(300px, .8fr);
+      gap: 16px;
+      align-items: start;
+      height: 100%;
+      overflow: auto;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .side { position: sticky; top: 80px; overflow: hidden; }
+    .viewer-controls {
+      position: absolute;
+      top: 15px;
+      left: 18px;
+      z-index: 20;
+      width: 320px;
+      max-height: calc(100% - 30px);
+      overflow: auto;
+      transform: translateX(-350px);
+      transition: transform 180ms ease;
+      padding-top: 36px;
+      color: var(--ink);
+      background: var(--panel);
+    }
+    .viewer-controls.open { transform: translateX(0); }
+    .viewer-toggle {
+      position: absolute;
+      top: 15px;
+      left: 18px;
+      z-index: 21;
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.92);
+      color: #111827;
+      border: 1px solid rgba(255,255,255,.62);
+      box-shadow: 0 12px 30px rgba(0,0,0,.28);
+      font-weight: 900;
+    }
+    .import-hero {
+      grid-column: 1 / -1;
+      padding: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .import-hero h2 {
+      margin: 0;
+      font-size: 26px;
+      line-height: 1.1;
+    }
+    .import-hero p {
+      max-width: 720px;
+      margin: 8px 0 0;
+      color: var(--muted);
+    }
+    .import-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .path-import {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: end;
+    }
+    .path-import .field {
+      margin-top: 0;
+    }
+    .import-panel {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+    .import-status {
+      margin-top: 0;
+    }
+    .import-note {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      color: var(--muted);
+      background: #fbfdff;
+    }
+    [data-theme="dark"] .import-note { background: #0b1220; }
+    .history-item .import-note {
+      margin-top: 4px;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11px;
+    }
+    [data-theme="dark"] .history-item .import-note { background: transparent; }
+    .history-list {
+      display: grid;
+      gap: 8px;
+      max-height: 260px;
+      overflow: auto;
+    }
+    .history-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .history-head .section-title { margin: 0; }
+    .history-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px;
+      background: var(--field-bg);
+    }
+    .virtual-spacer {
+      width: 1px;
+      pointer-events: none;
+      scroll-snap-align: none;
+    }
+    .history-path {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .section { padding: 14px; border-bottom: 1px solid var(--line); }
+    .section:last-child { border-bottom: 0; }
+    .section-title { margin: 0 0 10px; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .drop {
+      min-height: 132px;
+      border: 1px dashed #9bb2c8;
+      border-radius: 8px;
+      background: #f9fcff;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 16px;
+    }
+    .drop.drag { border-color: var(--brand); background: #eaf6ff; }
+    .drop strong { display: block; font-size: 15px; margin-bottom: 5px; }
+    .drop span { color: var(--muted); }
+    .field { display: grid; gap: 5px; margin-top: 10px; }
+    .field label { color: var(--muted); font-weight: 700; font-size: 12px; }
+    .input, .select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px 10px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+    }
+    .input, .select {
+      background: var(--field-bg);
+      color: var(--ink);
+    }
+    .select option {
+      background: var(--panel);
+      color: var(--ink);
+    }
+    .input:focus, .select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(35,131,196,.14); }
+    .check { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; user-select: none; }
+    .check input { margin-top: 3px; accent-color: var(--brand); }
+    .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .metric { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #fbfdff; min-height: 72px; }
+    .metric strong { display: block; font-size: 22px; line-height: 1.1; }
+    .metric span { color: var(--muted); font-size: 12px; }
+    .emoji-list { max-height: 230px; overflow: auto; display: flex; flex-wrap: wrap; gap: 7px; padding-right: 2px; }
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      min-height: 31px;
+      padding: 5px 9px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--ink);
+    }
+    [data-theme="dark"] .chip {
+      background: var(--field-bg);
+      color: var(--ink);
+    }
+    .chip.active { border-color: var(--brand); background: #eaf6ff; color: #125d90; }
+    .chip small { color: var(--muted); }
+    .content { display: grid; gap: 12px; min-width: 0; }
+    .status {
+      border-left: 4px solid var(--brand);
+      background: #edf7ff;
+      color: #174768;
+      border-radius: 7px;
+      padding: 10px 12px;
+    }
+    .status.warn { border-left-color: var(--warn); background: #fff6ec; color: #724007; }
+    .toolbar {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) 160px 130px 120px;
+      gap: 10px;
+      align-items: end;
+    }
+    .gallery-wrap {
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+      background: var(--viewer-bg);
+    }
+    .gallery {
+      height: 100%;
+      overflow: auto;
+      padding: 0;
+      display: block;
+      scroll-snap-type: y proximity;
+      overscroll-behavior-y: contain;
+      scrollbar-width: none;
+    }
+    .gallery::-webkit-scrollbar { width: 0; height: 0; }
+    .viewer-content {
+      grid-area: 1 / 1;
+      display: block;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+    }
+    .matrix-layout {
+      max-width: none;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--viewer-bg);
+    }
+    .matrix-gallery {
+      height: 100%;
+      overflow: auto;
+      scroll-snap-type: y proximity;
+      scrollbar-width: none;
+      padding: clamp(8px, 1.2vmin, 14px);
+    }
+    .matrix-gallery::-webkit-scrollbar { width: 0; height: 0; }
+    .matrix-screen {
+      min-height: 100%;
+      column-width: clamp(150px, 18vw, 280px);
+      column-gap: clamp(8px, 1.1vmin, 14px);
+      scroll-snap-align: start;
+      padding-bottom: clamp(8px, 1.2vmin, 14px);
+    }
+    .matrix-card {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+      aspect-ratio: var(--matrix-aspect, 1);
+      margin: 0 0 clamp(8px, 1.1vmin, 14px);
+      break-inside: avoid;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 8px;
+      background: #0b0f18;
+      min-width: 0;
+      min-height: 128px;
+      max-height: 78vh;
+      padding: 0;
+      color: #fff;
+      text-align: left;
+      box-shadow: 0 18px 34px rgba(0,0,0,.24);
+    }
+    .matrix-media {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      cursor: zoom-in;
+    }
+    .matrix-card img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .matrix-bg {
+      object-fit: cover;
+      filter: blur(22px) saturate(1.18);
+      transform: scale(1.12);
+      opacity: .42;
+    }
+    .matrix-img {
+      object-fit: contain;
+      z-index: 1;
+    }
+    .matrix-card::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 54%;
+      background: linear-gradient(0deg, rgba(0,0,0,.72), rgba(0,0,0,0));
+      pointer-events: none;
+    }
+    .matrix-info {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      z-index: 2;
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+    .matrix-line {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: clamp(10px, 1.1vmin, 12px);
+      font-weight: 800;
+      text-shadow: 0 2px 8px rgba(0,0,0,.5);
+    }
+    .matrix-meta {
+      color: rgba(255,255,255,.76);
+      font-size: clamp(9px, 1vmin, 11px);
+      font-weight: 700;
+    }
+    .matrix-jump {
+      margin-top: 6px;
+      width: fit-content;
+      max-width: 100%;
+      min-height: 28px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.24);
+      background: rgba(255,255,255,.9);
+      color: #111827;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .reel {
+      position: relative;
+      height: 100%;
+      min-height: 100%;
+      width: 100%;
+      max-width: 1320px;
+      margin: 0 auto;
+      background: var(--viewer-bg);
+      overflow: hidden;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: grid;
+      place-items: center;
+      padding: clamp(12px, 2vmin, 24px);
+    }
+    .lightbox[hidden] { display: none; }
+    .lightbox-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.86);
+      backdrop-filter: blur(10px);
+      cursor: zoom-out;
+    }
+    .lightbox-img {
+      position: relative;
+      z-index: 1;
+      max-width: min(96vw, 1400px);
+      max-height: 94vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 28px 80px rgba(0,0,0,.5);
+    }
+    .reel-media {
+      position: absolute;
+      inset: 0;
+      background: #0b0f18;
+    }
+    .media-board {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      padding: clamp(8px, 1.6vmin, 18px) 92px clamp(126px, 23vh, 190px) clamp(8px, 1.6vmin, 18px);
+      min-width: 0;
+      min-height: 0;
+    }
+    .main-panel {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #05070b;
+      box-shadow: 0 18px 50px rgba(0,0,0,.22);
+    }
+    .reel-carousel {
+      position: relative;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+      touch-action: pan-x;
+      width: 100%;
+      height: 100%;
+    }
+    .reel-carousel::-webkit-scrollbar { width: 0; height: 0; }
+    .reel-slide {
+      position: relative;
+      flex: 0 0 100%;
+      width: 100%;
+      height: 100%;
+      scroll-snap-align: center;
+      overflow: hidden;
+      background: var(--viewer-bg);
+      display: grid;
+      place-items: center;
+      border: 0;
+      padding: 0;
+      color: inherit;
+      cursor: zoom-in;
+    }
+    .slide-bg {
+      position: absolute;
+      inset: -18px;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: blur(24px) saturate(.75);
+      opacity: .38;
+      transform: scale(1.12);
+    }
+    .slide-img {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      max-width: 100%;
+      max-height: 100%;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      box-sizing: border-box;
+    }
+    .reel-slide[data-fit="cover"] .slide-img {
+      object-fit: cover;
+    }
+    .reel-slide[data-fit="crop"] .slide-img {
+      object-fit: cover;
+      transform: scale(1.018);
+    }
+    .reel-slide[data-fit="contain"] .slide-img {
+      object-fit: contain;
+      padding: clamp(0px, .7vmin, 8px);
+    }
+    .reel-slide[data-fit="cover"] .slide-bg {
+      opacity: .18;
+      filter: blur(18px) saturate(.82);
+    }
+    .reel-slide[data-fit="crop"] .slide-bg {
+      opacity: .28;
+      filter: blur(22px) saturate(.82);
+    }
+    .reel-slide[data-fit="contain"] .slide-bg {
+      opacity: .46;
+      filter: blur(28px) saturate(.78);
+    }
+    .thumb-strip {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(98px, 17vh, 142px);
+      transform: translateX(-50%);
+      z-index: 8;
+      max-width: min(72vw, 520px);
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 7px 9px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.24);
+      backdrop-filter: blur(10px);
+      scrollbar-width: none;
+    }
+    .thumb-strip::-webkit-scrollbar { width: 0; height: 0; }
+    .media-thumb {
+      position: relative;
+      flex: 0 0 auto;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      padding: 0;
+      border: 0;
+      background: rgba(255,255,255,.58);
+      box-shadow: 0 1px 8px rgba(0,0,0,.28);
+      transition: width 180ms ease, background 180ms ease, opacity 180ms ease;
+      opacity: .82;
+    }
+    .media-thumb.active {
+      width: 26px;
+      background: #fff;
+      opacity: 1;
+    }
+    .reel-no-media {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--viewer-muted);
+      padding: 30px;
+      background: #0b0f18;
+    }
+    .reel-no-media strong {
+      display: block;
+      color: var(--viewer-text);
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    .reel-gradient {
+      position: absolute;
+      inset: auto 0 0;
+      height: min(45%, 260px);
+      z-index: 4;
+      background: linear-gradient(180deg, transparent, rgba(0,0,0,.82));
+      pointer-events: none;
+    }
+    .reel-overlay {
+      position: absolute;
+      left: 18px;
+      right: 88px;
+      bottom: clamp(12px, 2.2vmin, 22px);
+      z-index: 5;
+      color: var(--viewer-text);
+    }
+    .reel-rank {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.18);
+      backdrop-filter: blur(8px);
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+    .reel-sender {
+      font-size: 17px;
+      font-weight: 900;
+      margin-bottom: 5px;
+      text-shadow: 0 2px 12px rgba(0,0,0,.55);
+    }
+    .reel-meta {
+      color: var(--viewer-muted);
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    .reel-msg {
+      max-height: min(96px, 18vh);
+      overflow: hidden;
+      white-space: pre-wrap;
+      word-break: break-word;
+      text-shadow: 0 2px 12px rgba(0,0,0,.55);
+    }
+    .reel-actions {
+      position: absolute;
+      right: 18px;
+      bottom: clamp(86px, 17vh, 130px);
+      z-index: 5;
+      display: grid;
+      gap: 12px;
+      color: var(--viewer-text);
+      text-align: center;
+    }
+    .action-bubble {
+      width: 58px;
+      min-height: 58px;
+      border-radius: 999px;
+      background: var(--viewer-panel);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      display: grid;
+      place-items: center;
+      padding: 7px;
+      font-weight: 800;
+      color: inherit;
+      text-decoration: none;
+    }
+    .action-bubble small {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--viewer-muted);
+    }
+    .reel-reactions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+    }
+    .reel-rx {
+      min-width: 50px;
+      border-radius: 999px;
+      padding: 5px 8px;
+      background: var(--viewer-panel);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      font-weight: 800;
+    }
+    .reel-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .source-link {
+      min-height: 30px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.88);
+      color: #111827;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 900;
+      box-shadow: 0 8px 22px rgba(0,0,0,.18);
+      border: 0;
+      cursor: pointer;
+    }
+    .photo-dots {
+      position: absolute;
+      top: 12px;
+      left: 14px;
+      right: 14px;
+      z-index: 6;
+      display: flex;
+      gap: 5px;
+    }
+    .photo-dot {
+      flex: 1;
+      height: 3px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.28);
+    }
+    .photo-dot.active { background: rgba(255,255,255,.92); }
+    .photo-nav {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+    }
+    .photo-nav button {
+      position: absolute;
+      top: 50%;
+      width: 38px;
+      height: 62px;
+      border-radius: 999px;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,.22);
+      color: #fff;
+      pointer-events: auto;
+      display: grid;
+      place-items: center;
+      font-size: 0;
+    }
+    .photo-nav button:first-child { left: 10px; }
+    .photo-nav button:last-child { right: 10px; }
+    .photo-nav button::before {
+      content: ">";
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 800;
+    }
+    .photo-nav button:first-child::before {
+      content: "<";
+    }
+    .photo-nav button:hover {
+      background: rgba(0,0,0,.36);
+      pointer-events: auto;
+    }
+    .rx { display: inline-flex; align-items: center; gap: 4px; margin: 0 4px 5px 0; padding: 3px 7px; border-radius: 999px; background: #eef3f8; white-space: nowrap; }
+    .empty { min-height: 320px; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 28px; }
+    .empty strong { display: block; color: var(--ink); font-size: 18px; margin-bottom: 6px; }
+
+    @media (max-width: 1050px) {
+      .import-layout { grid-template-columns: 1fr; }
+      .viewer-layout { grid-template-columns: minmax(0, 1fr); }
+      .import-hero { flex-direction: column; align-items: stretch; }
+      .import-layout .side { position: static; }
+      .viewer-controls { position: absolute; }
+      .toolbar { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 820px), (max-aspect-ratio: 4 / 5) {
+      .media-board {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 8px 74px clamp(132px, 25vh, 198px) 8px;
+      }
+      .thumb-strip {
+        bottom: clamp(92px, 16vh, 132px);
+      }
+      .reel-actions {
+        right: 10px;
+      }
+      .reel-overlay {
+        right: 74px;
+      }
+    }
+    @media (max-height: 560px) {
+      .topbar-inner {
+        padding: 7px 12px;
+        gap: 8px;
+      }
+      .mark {
+        width: 30px;
+        height: 30px;
+        border-radius: 7px;
+        font-size: 12px;
+      }
+      h1 { font-size: 15px; }
+      .subtitle { display: none; }
+      .actions { gap: 6px; }
+      .btn {
+        min-height: 30px;
+        padding: 5px 9px;
+        font-size: 12px;
+      }
+      .media-board {
+        padding-bottom: 84px;
+        padding-right: 72px;
+      }
+      .reel-overlay {
+        left: 12px;
+        right: 74px;
+      }
+      .reel-rank {
+        margin-bottom: 6px;
+      }
+      .reel-msg {
+        max-height: 54px;
+      }
+      .action-bubble {
+        width: 50px;
+        min-height: 50px;
+      }
+      .reel-actions {
+        gap: 7px;
+        bottom: 72px;
+      }
+      .thumb-strip {
+        bottom: 58px;
+      }
+      .reel-rx {
+        min-width: 44px;
+        padding: 4px 6px;
+      }
+    }
+    @media (max-height: 420px) {
+      .media-board {
+        padding-bottom: 64px;
+      }
+      .thumb-strip {
+        bottom: 46px;
+        gap: 6px;
+      }
+      .reel-overlay {
+        bottom: 8px;
+      }
+      .reel-msg {
+        display: none;
+      }
+      .reel-meta {
+        margin-bottom: 0;
+      }
+    }
+    @media (max-width: 700px) {
+      .topbar-inner { align-items: stretch; flex-direction: column; }
+      .actions { justify-content: stretch; }
+      .btn { flex: 1 1 auto; }
+      main { padding: 12px; }
+      .toolbar { grid-template-columns: 1fr; }
+      .path-import { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="mark">TG</div>
+        <div>
+          <h1>TG Reaction Ranker</h1>
+          <div class="subtitle" id="sourceLabel">Import Telegram HTML folder or JSON</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="importPageBtn" type="button">Import</button>
+        <button class="btn secondary" id="viewerPageBtn" type="button">Viewer</button>
+        <button class="btn secondary" id="matrixPageBtn" type="button">Matrix</button>
+        <button class="btn secondary" id="themeBtn" type="button">Theme: Black</button>
+        <button class="btn secondary" id="exportBtn" type="button" disabled>Export CSV</button>
+        <button class="btn secondary" id="closeBtn" type="button">Close App</button>
+      </div>
+      <input class="hidden-input" id="fileInput" type="file" accept=".html,.htm,.json,application/json" multiple>
+      <input class="hidden-input" id="folderInput" type="file" webkitdirectory directory multiple>
+    </div>
+  </header>
+
+  <main class="page import-layout" id="importPage">
+    <section class="panel import-hero">
+      <div>
+        <h2>Import module</h2>
+        <p>Load Telegram Desktop HTML exports, including the photos folder. Import Folder is the recommended path for media previews.</p>
+      </div>
+      <div class="import-actions">
+        <label class="btn" for="folderInput">Import Folder</label>
+        <label class="btn secondary" for="fileInput">Import Files</label>
+        <button class="btn secondary" id="demoBtn" type="button">Demo</button>
+        <button class="btn secondary" id="openViewerBtn" type="button" disabled>Open Viewer</button>
+      </div>
+    </section>
+
+    <section class="panel import-panel">
+      <div class="path-import">
+        <div class="field">
+          <label for="pathInput">Local export path</label>
+          <input class="input" id="pathInput" type="text" placeholder="C:\Users\27889\Downloads\Telegram Desktop\ChatExport_2026-07-03 (1)">
+        </div>
+        <button class="btn" id="pathImportBtn" type="button">Import Path</button>
+      </div>
+      <div class="drop" id="drop">
+        <div>
+          <strong>Drop messages*.html / result.json here</strong>
+          <span>For photos, use Import Path or Import Folder and select the whole ChatExport folder.</span>
+        </div>
+      </div>
+      <div class="status import-status" id="status">No data loaded. Select the export folder to start.</div>
+    </section>
+
+    <section class="panel import-panel">
+      <div class="history-head">
+        <h2 class="section-title">Imported channels</h2>
+        <button class="btn secondary" id="refreshImportsBtn" type="button">Refresh</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="import-note">No imported channels yet.</div>
+      </div>
+    </section>
+
+    <section class="panel import-panel">
+      <h2 class="section-title">Import summary</h2>
+      <div class="metrics">
+        <div class="metric"><strong id="messageCount">0</strong><span>messages with reactions</span></div>
+        <div class="metric"><strong id="reactionCount">0</strong><span>total reactions</span></div>
+        <div class="metric"><strong id="emojiCount">0</strong><span>emoji kinds</span></div>
+        <div class="metric"><strong id="topScore">0</strong><span>top score</span></div>
+      </div>
+      <div class="import-note" id="importNote">Photos are indexed only when the whole export folder is selected.</div>
+    </section>
+  </main>
+
+  <main class="page viewer-layout" id="viewerPage" hidden>
+    <button class="viewer-toggle" id="viewerToggle" type="button" aria-label="Viewer menu"><span aria-hidden="true">&#9776;</span></button>
+    <aside class="panel side viewer-controls" id="viewerControls">
+      <section class="section">
+        <h2 class="section-title">Viewer controls</h2>
+        <div class="field">
+          <label for="query">Search message or sender</label>
+          <input class="input" id="query" type="search" placeholder="Keyword">
+        </div>
+        <div class="field">
+          <label for="sortMode">Sort</label>
+          <select class="select" id="sortMode">
+            <option value="score">Top score</option>
+            <option value="reactions">Most reactions</option>
+            <option value="date_desc">Newest</option>
+            <option value="date_asc">Oldest</option>
+          </select>
+        </div>
+        <label class="check"><input id="includeForwarded" type="checkbox" checked>Include forwarded messages</label>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">Emoji filter</h2>
+        <div class="emoji-list" id="emojiList">
+          <button class="chip active" data-emoji="__all" type="button">All</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="viewer-content">
+      <div class="panel gallery-wrap">
+        <div class="gallery" id="gallery">
+          <div class="empty"><div><strong>No data</strong><span>Go to Import and load Telegram export files.</span></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <main class="page matrix-layout" id="matrixPage" hidden>
+    <section class="matrix-gallery" id="matrixGallery">
+      <div class="empty"><div><strong>No data</strong><span>Go to Import and load Telegram export files.</span></div></div>
+    </section>
+  </main>
+
+  <div class="lightbox" id="lightbox" hidden>
+    <div class="lightbox-backdrop" id="lightboxBackdrop"></div>
+    <img class="lightbox-img" id="lightboxImg" alt="">
+  </div>
+
+  <script>
+    const TELEGRAM_WEB_JUMP_URL = "https://web.telegram.org/k/#@tir10057";
+    const HISTORY_KEY = "tgRankerImportHistory";
+    const VIRTUAL_BUFFER = 4;
+    const MATRIX_BUFFER = 1;
+    const MATRIX_PAGE_SIZE = 48;
+    const state = {
+      source: "",
+      messages: [],
+      rows: [],
+      channelHandle: "",
+      channelEntryLink: "",
+      selectedEmoji: "__all",
+      mediaUrls: new Map(),
+      emojiItems: [],
+      emojiTotal: 0,
+      topScore: 0,
+      history: [],
+      virtual: { itemHeight: 0, start: -1, end: -1, frame: 0 },
+      matrixVirtual: { screenHeight: 0, start: -1, end: -1, frame: 0 }
+    };
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      topbar: document.querySelector(".topbar"),
+      fileInput: $("fileInput"), folderInput: $("folderInput"), drop: $("drop"),
+      pathInput: $("pathInput"), pathImportBtn: $("pathImportBtn"),
+      sourceLabel: $("sourceLabel"), status: $("status"), exportBtn: $("exportBtn"),
+      demoBtn: $("demoBtn"), closeBtn: $("closeBtn"), themeBtn: $("themeBtn"), emojiList: $("emojiList"),
+      importPageBtn: $("importPageBtn"), viewerPageBtn: $("viewerPageBtn"), matrixPageBtn: $("matrixPageBtn"),
+      importPage: $("importPage"), viewerPage: $("viewerPage"), matrixPage: $("matrixPage"),
+      openViewerBtn: $("openViewerBtn"), importNote: $("importNote"),
+      viewerToggle: $("viewerToggle"), viewerControls: $("viewerControls"),
+      historyList: $("historyList"), refreshImportsBtn: $("refreshImportsBtn"), matrixGallery: $("matrixGallery"),
+      lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxBackdrop: $("lightboxBackdrop"),
+      includeForwarded: $("includeForwarded"),
+      messageCount: $("messageCount"), reactionCount: $("reactionCount"),
+      emojiCount: $("emojiCount"), topScore: $("topScore"),
+      query: $("query"), sortMode: $("sortMode"),
+      gallery: $("gallery")
+    };
+
+    function n(value) { return new Intl.NumberFormat("zh-CN").format(value || 0); }
+    function esc(value) {
+      return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    }
+    function setStatus(text, warn = false) {
+      els.status.textContent = text;
+      els.status.className = warn ? "status warn" : "status";
+    }
+    function setPage(page) {
+      if ((page === "viewer" || page === "matrix") && !state.messages.length) {
+        render();
+      }
+      const isImport = page === "import";
+      const isViewer = page === "viewer";
+      const isMatrix = page === "matrix";
+      els.importPage.hidden = !isImport;
+      els.viewerPage.hidden = !isViewer;
+      els.matrixPage.hidden = !isMatrix;
+      els.importPageBtn.classList.toggle("secondary", !isImport);
+      els.viewerPageBtn.classList.toggle("secondary", !isViewer);
+      els.matrixPageBtn.classList.toggle("secondary", !isMatrix);
+      requestAnimationFrame(() => {
+        if (isViewer) renderGallery(false);
+        if (isMatrix) renderMatrix(false);
+        applyImageFits();
+        alignCarousels("auto");
+      });
+    }
+    function setTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      localStorage.setItem("tgRankerTheme", theme);
+      els.themeBtn.textContent = theme === "dark" ? "Theme: Black" : "Theme: White";
+    }
+    function toggleTheme() {
+      setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+    }
+    function loadHistory() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+        state.history = Array.isArray(parsed) ? parsed.map(normalizeHistoryItem).filter(Boolean).slice(0, 12) : [];
+      } catch (_) {
+        state.history = [];
+      }
+      renderHistory();
+    }
+    function mergeHistory(items) {
+      const merged = [];
+      const seen = new Set();
+      [...items, ...state.history].map(normalizeHistoryItem).filter(Boolean).forEach((item) => {
+        const key = item.path.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        merged.push(item);
+      });
+      state.history = merged.slice(0, 48);
+      renderHistory();
+    }
+    async function loadKnownImports() {
+      try {
+        const response = await fetch("/api/imports", { cache: "no-store" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) return;
+        mergeHistory((data.imports || []).map((item) => ({
+          path: item.path,
+          label: item.label || item.path,
+          updated: item.updated || 0,
+        })));
+      } catch (_) {}
+    }
+    function normalizeHistoryItem(item) {
+      if (!item) return null;
+      if (typeof item === "string") {
+        const path = item.trim();
+        return path ? { path, label: path, updated: 0, browserOnly: path.startsWith("browser-folder:") } : null;
+      }
+      const path = String(item.path || "").trim();
+      if (!path) return null;
+      const label = String(item.label || item.displayName || path).trim() || path;
+      return { path, label, updated: Number(item.updated || 0), browserOnly: Boolean(item.browserOnly || path.startsWith("browser-folder:")) };
+    }
+    function saveHistory(path, label = "", options = {}) {
+      const value = String(path || "").trim();
+      if (!value) return;
+      const entry = {
+        path: value,
+        label: String(label || value).trim() || value,
+        updated: Date.now() / 1000,
+        browserOnly: Boolean(options.browserOnly)
+      };
+      state.history = [entry, ...state.history.map(normalizeHistoryItem).filter((item) => item && item.path !== value)].slice(0, 12);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history));
+      renderHistory();
+    }
+    function renderHistory() {
+      if (!els.historyList) return;
+      if (!state.history.length) {
+        els.historyList.innerHTML = `<div class="import-note">No imported channels yet.</div>`;
+        return;
+      }
+      els.historyList.innerHTML = state.history.map(normalizeHistoryItem).filter(Boolean).map((item) => `
+        <div class="history-item">
+          <div>
+            <div class="history-path" title="${esc(item.path)}">${esc(item.label)}</div>
+            <div class="import-note">${item.browserOnly ? "Browser folder import. Select the folder again to reload." : esc(item.path)}</div>
+          </div>
+          ${item.browserOnly ? `<button class="btn secondary" type="button" disabled>Recorded</button>` : `<button class="btn secondary" type="button" data-history-path="${esc(item.path)}">Import</button>`}
+        </div>
+      `).join("");
+    }
+    function normalizePath(path) {
+      return decodeURIComponent(String(path || "").replaceAll("\\", "/").replace(/^\.?\//, "")).toLowerCase();
+    }
+    function relativeFromWebkit(path) {
+      const normalized = String(path || "").replaceAll("\\", "/");
+      const index = normalized.indexOf("/");
+      return index >= 0 ? normalized.slice(index + 1) : normalized;
+    }
+    function clearMediaUrls() {
+      for (const url of new Set(state.mediaUrls.values())) {
+        if (String(url).startsWith("blob:")) URL.revokeObjectURL(url);
+      }
+      state.mediaUrls.clear();
+    }
+    function rememberMediaFile(file) {
+      if (!/^image\//i.test(file.type) && !/\.(png|jpe?g|gif|webp)$/i.test(file.name)) return;
+      const url = URL.createObjectURL(file);
+      const fullPath = file.webkitRelativePath || file.name;
+      const relativePath = relativeFromWebkit(fullPath);
+      [fullPath, relativePath, file.name].forEach((key) => {
+        if (key) state.mediaUrls.set(normalizePath(key), url);
+      });
+    }
+    function mediaUrl(path) {
+      const value = String(path || "");
+      if (/^(blob:|data:image\/|https?:\/\/|\/api\/)/i.test(value)) return value;
+      return state.mediaUrls.get(normalizePath(path)) || "";
+    }
+    function textFromTelegramNode(node) {
+      if (!node) return "";
+      const clone = node.cloneNode(true);
+      clone.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+      return clone.textContent.split("\n").map((line) => line.trim()).filter(Boolean).join("\n");
+    }
+    function imageSizeFromNode(img) {
+      if (!img) return { width: 0, height: 0 };
+      const style = img.getAttribute("style") || "";
+      const styleWidth = Number(style.match(/width:\s*([0-9.]+)px/i)?.[1] || 0);
+      const styleHeight = Number(style.match(/height:\s*([0-9.]+)px/i)?.[1] || 0);
+      const width = Number(img.getAttribute("width") || 0) || styleWidth || 0;
+      const height = Number(img.getAttribute("height") || 0) || styleHeight || 0;
+      return { width, height };
+    }
+    function normalizeText(value) {
+      if (Array.isArray(value)) {
+        return value.map((item) => typeof item === "string" ? item : (item && typeof item.text === "string" ? item.text : "")).join("");
+      }
+      return typeof value === "string" ? value : "";
+    }
+    function normalizeReactions(reactions) {
+      if (!Array.isArray(reactions)) return [];
+      const map = new Map();
+      for (const reaction of reactions) {
+        const emoji = typeof reaction === "string" ? reaction : (reaction.emoji || reaction.emoticon || reaction.reaction || reaction.value || "");
+        if (!emoji) continue;
+        const count = Math.max(1, Number(reaction.count ?? reaction.total_count ?? 1) || 1);
+        map.set(emoji, (map.get(emoji) || 0) + count);
+      }
+      return Array.from(map, ([emoji, count]) => ({ emoji, count })).sort((a, b) => b.count - a.count || a.emoji.localeCompare(b.emoji));
+    }
+    function normalizeHref(href) {
+      const value = String(href || "").trim();
+      if (/^(https?:\/\/|tg:\/\/)/i.test(value)) return value;
+      if (/^(?:www\.)?(?:t\.me|telegram\.me)\//i.test(value)) return `https://${value.replace(/^www\./i, "")}`;
+      return "";
+    }
+    const TELEGRAM_CHANNEL_REDIRECTS = Object.freeze({
+      yijihimeqwq1: "yijiqwq",
+      yijiqwq: "yijiqwq",
+      yijihimeqwq: "yijiqwq"
+    });
+    const CHANNEL_NAME_HANDLE_HINTS = Object.freeze({
+      "一姬": "yijiqwq",
+      "色色前线": "yijiqwq"
+    });
+    function remapTelegramChannel(channel) {
+      let value = String(channel || "").trim();
+      const urlMatch = value.match(/(?:https?:\/\/)?(?:t\.me|telegram\.me)\/(?:s\/)?([A-Za-z0-9_]{3,})(?:[/?#].*)?$/i);
+      if (urlMatch) value = urlMatch[1];
+      value = value.replace(/^@/, "");
+      if (!value) return "";
+      return TELEGRAM_CHANNEL_REDIRECTS[value.toLowerCase()] || value;
+    }
+    function handleFromTitle(title) {
+      const text = String(title || "");
+      const explicit = text.match(/@([A-Za-z0-9_]{3,})/);
+      if (explicit) return remapTelegramChannel(explicit[1]);
+      for (const [marker, handle] of Object.entries(CHANNEL_NAME_HANDLE_HINTS)) {
+        if (marker && text.includes(marker)) return handle;
+      }
+      return "";
+    }
+    function handleFromPath(path) {
+      const match = String(path || "").match(/@([A-Za-z0-9_]{3,})/);
+      return match ? remapTelegramChannel(match[1]) : "";
+    }
+    function extractExportTitle(htmlText) {
+      const doc = new DOMParser().parseFromString(htmlText || "", "text/html");
+      const title = doc.querySelector(".page_header .text.bold")?.textContent?.trim().replace(/\s+/g, " ");
+      if (title) return title;
+      return doc.querySelector(".message.default .from_name")?.textContent?.trim().replace(/\s+/g, " ") || "";
+    }
+    function displayNameForImport(title, handle, fallback) {
+      const base = String(title || fallback || "Telegram export").trim();
+      const cleanHandle = remapTelegramChannel(handle);
+      if (!cleanHandle) return base;
+      const suffix = `@${cleanHandle}`;
+      return base.toLowerCase().includes(suffix.toLowerCase()) ? base : `${base} ${suffix}`;
+    }
+    function resolveTelegramTargetUrl(href) {
+      const value = normalizeHref(href);
+      if (!value) return "";
+      const parts = telegramMessageParts(value);
+      if (parts) {
+        if (parts.kind === "private") return `https://t.me/c/${parts.channel}/${parts.id}`;
+        return `https://t.me/${parts.channel}/${parts.id}`;
+      }
+      const channelMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/([A-Za-z0-9_]{3,})(?:[/?#].*)?$/i);
+      if (channelMatch) return `https://t.me/${remapTelegramChannel(channelMatch[1])}`;
+      const privateMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/c\/(\d+)(?:[/?#].*)?$/i);
+      if (privateMatch) return `https://t.me/c/${privateMatch[1]}`;
+      return value;
+    }
+    function normalizeTelegramEntryLink(href) {
+      const value = normalizeHref(href);
+      if (!value) return "";
+      const inviteMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/(\+[A-Za-z0-9_-]+)(?:[/?#].*)?$/i);
+      if (inviteMatch) return `https://t.me/${inviteMatch[1]}`;
+      const addListMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/(addlist\/[A-Za-z0-9_-]+)(?:[/?#].*)?$/i);
+      if (addListMatch) return `https://t.me/${addListMatch[1]}`;
+      const channelMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/([A-Za-z0-9_]{3,})(?:\/)?(?:[?#].*)?$/i);
+      if (!channelMatch) return "";
+      const handle = remapTelegramChannel(channelMatch[1]);
+      if (/bot$/i.test(handle)) return "";
+      return `https://t.me/${handle}`;
+    }
+    function inferTelegramEntryLinkFromTexts(items) {
+      let best = null;
+      const docs = Array.isArray(items) ? items : [];
+      docs.forEach((item, fileIndex) => {
+        const doc = new DOMParser().parseFromString(item.text || "", "text/html");
+        doc.querySelectorAll("a[href]").forEach((link, linkIndex) => {
+          const entry = normalizeTelegramEntryLink(link.getAttribute("href"));
+          if (!entry) return;
+          const message = link.closest(".message");
+          const context = `${link.textContent || ""} ${link.closest(".text")?.textContent || ""} ${message?.textContent || ""}`.replace(/\s+/g, " ").slice(0, 700);
+          let score = 1200 - fileIndex * 25 - linkIndex;
+          if (/备用|防丢|官方|频道|直播群|加入|一键|全部|群/i.test(context)) score += 220;
+          if (/addlist/i.test(entry)) score += 110;
+          if (/\/\+/i.test(entry)) score += 140;
+          if (/vip|bot|推广|广告|客服|购买|投稿/i.test(context)) score -= 170;
+          if (message?.id === "message1") score += 120;
+          if (!best || score > best.score) best = { link: entry, score };
+        });
+      });
+      return best?.link || "";
+    }
+    function telegramMessageParts(href) {
+      const value = normalizeHref(href);
+      const match = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/(?!s\/)([A-Za-z0-9_]{3,})\/(\d+)(?:[/?#].*)?$/i);
+      if (match) return { channel: remapTelegramChannel(match[1]), id: match[2], kind: "public" };
+      const webMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/s\/([A-Za-z0-9_]{3,})\/(\d+)(?:[/?#].*)?$/i);
+      if (webMatch) return { channel: remapTelegramChannel(webMatch[1]), id: webMatch[2], kind: "public" };
+      const privateMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/c\/(\d+)\/(\d+)(?:[/?#].*)?$/i);
+      if (privateMatch) return { channel: privateMatch[1], id: privateMatch[2], kind: "private" };
+      return null;
+    }
+    function telegramChannelUrl(href) {
+      const value = normalizeHref(href);
+      if (!value) return "";
+      const channelMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/([A-Za-z0-9_]{3,})(?:\/)?(?:[?#].*)?$/i);
+      if (channelMatch) return `https://t.me/${remapTelegramChannel(channelMatch[1])}`;
+      const messageMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/(?:s\/)?([A-Za-z0-9_]{3,})\/(\d+)(?:[/?#].*)?$/i);
+      if (messageMatch) return `https://t.me/${remapTelegramChannel(messageMatch[1])}`;
+      const privateMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/c\/(\d+)(?:[/?#].*)?$/i);
+      if (privateMatch) return `https://t.me/c/${privateMatch[1]}`;
+      return value;
+    }
+    function telegramMessageWebUrl(href) {
+      const parts = telegramMessageParts(href);
+      if (parts) return `https://t.me/s/${parts.channel}/${parts.id}`;
+      return "";
+    }
+    function telegramMessageDirectUrl(href) {
+      const parts = telegramMessageParts(href);
+      if (parts) return `https://t.me/${parts.channel}/${parts.id}`;
+      return "";
+    }
+    function inferTelegramChannel(doc, title = "") {
+      const titled = handleFromTitle(title);
+      if (titled) return titled;
+      const messageIds = new Set(Array.from(doc.querySelectorAll(".message.default[id]")).map((node) => (node.id || "").replace("message", "")).filter(Boolean));
+      const counts = new Map();
+      doc.querySelectorAll("a[href]").forEach((link) => {
+        const parts = telegramMessageParts(link.getAttribute("href"));
+        if (!parts) return;
+        const rawChannel = String(parts.channel || "");
+        if (!Object.values(TELEGRAM_CHANNEL_REDIRECTS).includes(rawChannel.toLowerCase())) return;
+        const item = counts.get(parts.channel) || { channel: parts.channel, count: 0, matched: 0 };
+        item.count += 1;
+        if (messageIds.has(parts.id)) item.matched += 1;
+        counts.set(parts.channel, item);
+      });
+      const [best] = Array.from(counts.values()).sort((a, b) => (b.matched - a.matched) || (b.count - a.count) || a.channel.localeCompare(b.channel));
+      if (!best) return "";
+      if (best.matched >= 2 || best.count >= 5) return best.channel;
+      return "";
+    }
+    function inferTelegramChannelFromTexts(items, title = "", rootName = "") {
+      const titled = handleFromTitle(title);
+      if (titled) return titled;
+      const pathHandle = handleFromPath(rootName);
+      if (pathHandle) return pathHandle;
+      const messageIds = new Set();
+      const counts = new Map();
+      for (const item of items) {
+        const html = item.text || "";
+        for (const match of html.matchAll(/id=["']message(\d+)["']/g)) {
+          messageIds.add(match[1]);
+        }
+      }
+      for (const item of items) {
+        const html = item.text || "";
+        for (const match of html.matchAll(/(?:https?:\/\/|)(?:t\.me|telegram\.me)\/(?!s\/)([A-Za-z0-9_]{3,})\/(\d+)(?:[/?#][^"'<\s]*)?/gi)) {
+          const channel = match[1];
+          const id = match[2];
+          const mapped = remapTelegramChannel(channel);
+          const stat = counts.get(mapped) || { channel: mapped, count: 0, matched: 0 };
+          stat.count += 1;
+          if (messageIds.has(id)) stat.matched += 1;
+          counts.set(mapped, stat);
+        }
+      }
+      const ranked = Array.from(counts.values()).sort((a, b) => (b.matched - a.matched) || (b.count - a.count) || a.channel.localeCompare(b.channel));
+      const [best, second] = ranked;
+      if (!best) return "";
+      const known = Object.values(TELEGRAM_CHANNEL_REDIRECTS).includes(best.channel.toLowerCase());
+      const strongMatched = best.matched >= 8 && best.matched >= (second?.matched || 0) * 2;
+      const moderateKnownMatch = known && best.matched >= 3 && best.matched > (second?.matched || 0);
+      const broadCoverage = messageIds.size >= 50 && best.matched >= Math.max(12, Math.ceil(messageIds.size * 0.03));
+      if (strongMatched || moderateKnownMatch || broadCoverage) return best.channel;
+      return "";
+    }
+    function sourceLinkForMessage(channel, id, links) {
+      if (channel && /^\d+$/.test(String(id || ""))) {
+        return `https://t.me/${remapTelegramChannel(channel)}/${id}`;
+      }
+      return "";
+    }
+    function jumpLinkForMessage(channel, id, links) {
+      if (channel && /^\d+$/.test(String(id || ""))) {
+        return `https://t.me/${remapTelegramChannel(channel)}/${id}`;
+      }
+      return "";
+    }
+    function extractLinks(node) {
+      if (!node) return [];
+      const seen = new Set();
+      return Array.from(node.querySelectorAll("a[href]")).map((link) => {
+        const href = normalizeHref(link.getAttribute("href"));
+        if (!href || seen.has(href)) return null;
+        seen.add(href);
+        return { href, text: link.textContent.trim().replace(/\s+/g, " ") || href };
+      }).filter(Boolean);
+    }
+    function pickSourceLink(links) {
+      for (const link of links) {
+        const webUrl = telegramMessageWebUrl(link.href);
+        if (webUrl) return webUrl;
+        const directUrl = telegramMessageDirectUrl(link.href);
+        if (directUrl) return directUrl;
+        const channelUrl = telegramChannelUrl(link.href);
+        if (channelUrl) return channelUrl;
+      }
+      return "";
+    }
+    function pickJumpLink(links) {
+      for (const link of links) {
+        const directUrl = telegramMessageDirectUrl(link.href);
+        if (directUrl) return directUrl;
+        const webUrl = telegramMessageWebUrl(link.href);
+        if (webUrl) return webUrl;
+        const channelUrl = telegramChannelUrl(link.href);
+        if (channelUrl) return channelUrl;
+      }
+      return "";
+    }
+    function pickPrimaryLink(links) {
+      return links.find((link) => /^https?:\/\//i.test(link.href))?.href || "";
+    }
+    function parseJson(data) {
+      const list = Array.isArray(data.messages) ? data.messages : (Array.isArray(data) ? data : []);
+      return list.map((msg) => {
+        const reactions = normalizeReactions(msg.reactions || msg.reaction_counts);
+        const links = [];
+        const rawLinks = Array.isArray(msg.links) ? msg.links : [];
+        rawLinks.forEach((item) => {
+          const href = normalizeHref(typeof item === "string" ? item : item?.href);
+          if (href) links.push({ href, text: href });
+        });
+        return {
+          id: msg.id ?? "",
+          date: msg.date || msg.date_unixtime || "",
+          from: msg.from || msg.actor || msg.author || "",
+          forwardedFrom: msg.forwarded_from || msg.forwarded_from_id || "",
+          text: normalizeText(msg.text || msg.caption || msg.file || msg.media_type),
+          media: [],
+          links,
+          sourceLink: resolveTelegramTargetUrl(msg.source_link || msg.link || "") || pickSourceLink(links),
+          jumpLink: resolveTelegramTargetUrl(msg.source_link || msg.link || "") || pickJumpLink(links),
+          primaryLink: pickPrimaryLink(links),
+          exportLink: "",
+          reactions,
+          total: reactions.reduce((sum, item) => sum + item.count, 0)
+        };
+      }).filter((msg) => msg.reactions.length);
+    }
+    function parseTelegramHtml(htmlText, context = {}) {
+      const doc = new DOMParser().parseFromString(htmlText, "text/html");
+      const sourceChannel = remapTelegramChannel(context.channelHandle || "");
+      let lastFrom = "";
+      let group = null;
+      const rows = [];
+
+      function mergeLinks(target, items) {
+        const seen = new Set(target.map((link) => link.href));
+        for (const link of items) {
+          if (!link.href || seen.has(link.href)) continue;
+          target.push(link);
+          seen.add(link.href);
+        }
+      }
+      function appendData(target, data) {
+        if (data.text) target.textParts.push(data.text);
+        target.media.push(...data.media);
+        mergeLinks(target.links, data.links);
+        if (data.reactions.length) {
+          target.reactions.push(...data.reactions);
+          if (!target.reactionId) target.reactionId = data.id;
+          if (!target.reactionDate) target.reactionDate = data.date;
+        }
+      }
+      function startGroup(data) {
+        group = {
+          id: data.id,
+          date: data.date,
+          from: data.sender,
+          textParts: [],
+          media: [],
+          links: [],
+          reactions: [],
+          reactionId: "",
+          reactionDate: ""
+        };
+        appendData(group, data);
+      }
+      function flushGroup() {
+        if (!group) return;
+        const reactions = normalizeReactions(group.reactions);
+        if (reactions.length) {
+          const linkId = group.reactionId || group.id;
+          const text = group.textParts.join("\n").trim();
+          rows.push({
+            id: linkId,
+            date: group.reactionDate || group.date,
+            from: group.from,
+            forwardedFrom: "",
+            text,
+            media: [...group.media],
+            links: group.links,
+            sourceLink: sourceLinkForMessage(sourceChannel, linkId, group.links),
+            jumpLink: jumpLinkForMessage(sourceChannel, linkId, group.links),
+            primaryLink: pickPrimaryLink(group.links),
+            exportLink: context.fileUrl && linkId ? `${context.fileUrl}#message${linkId}` : "",
+            reactions,
+            total: reactions.reduce((sum, item) => sum + item.count, 0)
+          });
+        }
+        group = null;
+      }
+
+      doc.querySelectorAll(".message.default").forEach((messageNode) => {
+        const body = messageNode.querySelector(":scope > .body") || messageNode;
+        const fromNode = body.querySelector(":scope > .from_name");
+        const sender = fromNode ? fromNode.textContent.trim().replace(/\s+/g, " ") : lastFrom;
+        if (sender) lastFrom = sender;
+        const id = (messageNode.id || "").replace("message", "");
+        const date = body.querySelector(":scope > .date.details")?.getAttribute("title") || "";
+        const textNode = body.querySelector(":scope > .text");
+        const text = textFromTelegramNode(textNode);
+        const links = extractLinks(textNode);
+        const media = Array.from(body.querySelectorAll(":scope > .media_wrap .photo_wrap")).map((link) => {
+          const img = link.querySelector("img.photo");
+          const size = imageSizeFromNode(img);
+          return {
+            href: link.getAttribute("href") || "",
+            thumb: img?.getAttribute("src") || "",
+            width: size.width,
+            height: size.height
+          };
+        }).filter((item) => item.href || item.thumb);
+        const reactions = [];
+        body.querySelectorAll(":scope > .reactions .reaction").forEach((rx) => {
+          const emoji = rx.querySelector(".emoji")?.textContent.trim() || "";
+          const count = Number(rx.querySelector(".count")?.textContent.trim() || "1") || 1;
+          if (emoji) reactions.push({ emoji, count });
+        });
+
+        const data = { id, date, sender, text, links, media, reactions };
+        const joined = messageNode.classList.contains("joined");
+        const shouldAttachMediaToGroup = Boolean(group) && joined && data.media.length && !data.text && !data.links.length && !data.reactions.length && group.reactions.length;
+        if (!joined || !group) {
+          flushGroup();
+          startGroup(data);
+          return;
+        }
+        if (shouldAttachMediaToGroup) {
+          appendData(group, data);
+          return;
+        }
+        flushGroup();
+        startGroup(data);
+      });
+      flushGroup();
+      return rows;
+    }
+    function parseDate(value) {
+      if (!value) return 0;
+      if (/^\d+$/.test(String(value))) return Number(value) * 1000;
+      const native = Date.parse(value);
+      if (!Number.isNaN(native)) return native;
+      const match = String(value).match(/^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
+      if (match) {
+        const [, dd, mm, yyyy, hh, min, ss = "0"] = match;
+        return new Date(Number(yyyy), Number(mm) - 1, Number(dd), Number(hh), Number(min), Number(ss)).getTime();
+      }
+      return 0;
+    }
+    function formatDate(value) {
+      const time = parseDate(value);
+      if (!time) return value || "-";
+      return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(time));
+    }
+    function prepareMessages(messages) {
+      let topScore = 0;
+      const emojiTotals = new Map();
+      for (const msg of messages) {
+        msg.total = Number(msg.total || msg.reactions?.reduce((sum, item) => sum + item.count, 0) || 0);
+        msg.score = msg.total;
+        msg.timestamp = parseDate(msg.date);
+        msg.mediaCount = msg.media?.length || 0;
+        msg.searchText = `${msg.text || ""} ${msg.from || ""} ${msg.forwardedFrom || ""}`.toLowerCase();
+        topScore = Math.max(topScore, msg.score);
+        for (const rx of msg.reactions || []) {
+          emojiTotals.set(rx.emoji, (emojiTotals.get(rx.emoji) || 0) + rx.count);
+        }
+      }
+      state.emojiItems = Array.from(emojiTotals, ([emoji, count]) => ({ emoji, count })).sort((a, b) => b.count - a.count || a.emoji.localeCompare(b.emoji));
+      state.emojiTotal = state.emojiItems.reduce((sum, item) => sum + item.count, 0);
+      state.topScore = topScore;
+      return messages;
+    }
+    function setUnifiedChannel(handle, rerender = false) {
+      const clean = remapTelegramChannel(handle || "");
+      state.channelHandle = clean;
+      if (rerender) render();
+      return clean;
+    }
+    function messageSpecificLink(msg) {
+      const id = String(msg?.id || "");
+      for (const raw of [msg?.jumpLink, msg?.sourceLink]) {
+        const parts = telegramMessageParts(raw);
+        if (parts && parts.id === id) {
+          return parts.kind === "private" ? `https://t.me/c/${parts.channel}/${parts.id}` : `https://t.me/${parts.channel}/${parts.id}`;
+        }
+      }
+      return "";
+    }
+    function unifiedLinkForMessage(msg) {
+      const handle = remapTelegramChannel(state.channelHandle || "");
+      if (handle && /^\d+$/.test(String(msg.id || ""))) return `https://t.me/${handle}/${msg.id}`;
+      return messageSpecificLink(msg) || state.channelEntryLink || "";
+    }
+    function applyImportResult({ source, messages, fileCount, mediaCount, statusPrefix, channelHandle = "", channelEntryLink = "" }) {
+      state.source = source || "Telegram export";
+      setUnifiedChannel(channelHandle, false);
+      state.channelEntryLink = normalizeTelegramEntryLink(channelEntryLink) || "";
+      state.messages = prepareMessages(messages);
+      state.selectedEmoji = "__all";
+      els.sourceLabel.textContent = `${state.source} - ${n(messages.length)} messages with reactions`;
+      const indexedMedia = mediaCount ?? state.mediaUrls.size;
+      setStatus(messages.length ? `${statusPrefix || "Imported"} ${n(fileCount)} message files and indexed ${n(indexedMedia)} image files.` : "No reactions found. Make sure the HTML files are Telegram messages*.html.", !messages.length);
+      els.importNote.textContent = messages.length
+        ? `Ready for viewing. ${n(messages.length)} ranked messages, ${n(indexedMedia)} indexed images.`
+        : "No reaction data was found in the selected export.";
+      render();
+      if (messages.length) setPage("viewer");
+    }
+    async function loadFiles(files) {
+      clearMediaUrls();
+      const allFiles = Array.from(files || []);
+      allFiles.forEach(rememberMediaFile);
+      const selected = allFiles.filter((file) => /\.(html?|json)$/i.test(file.name) && file.size > 0);
+      if (!selected.length) {
+        setStatus("No readable .html or .json files found. Empty messages files are ignored.", true);
+        return;
+      }
+      selected.sort((a, b) => (a.webkitRelativePath || a.name).localeCompare((b.webkitRelativePath || b.name), undefined, { numeric: true }));
+      const htmlFiles = selected.filter((file) => /\.html?$/i.test(file.name));
+      const jsonFiles = selected.filter((file) => /\.json$/i.test(file.name));
+      if (jsonFiles.length && selected.length > 1) {
+        setStatus("When selecting multiple files, choose HTML files only. Import JSON alone.", true);
+        return;
+      }
+      let messages = [];
+      let sourceTitle = "";
+      let channelHandle = "";
+      let channelEntryLink = "";
+      const rootName = selected[0].webkitRelativePath ? selected[0].webkitRelativePath.split("/")[0] : "";
+      if (jsonFiles.length === 1) {
+        messages = parseJson(JSON.parse(await jsonFiles[0].text()));
+      } else {
+        const htmlTexts = await Promise.all(htmlFiles.map(async (file) => ({ file, text: await file.text() })));
+        sourceTitle = htmlTexts.map((item) => extractExportTitle(item.text)).find(Boolean) || "";
+        channelHandle = inferTelegramChannelFromTexts(htmlTexts, sourceTitle, rootName);
+        channelEntryLink = inferTelegramEntryLinkFromTexts(htmlTexts);
+        for (const item of htmlTexts) messages.push(...parseTelegramHtml(item.text, { fileName: item.file.name, channelHandle }));
+      }
+      const fallbackSource = rootName || (selected.length > 1 ? `${selected.length} HTML files` : selected[0].name);
+      const sourceName = displayNameForImport(sourceTitle, channelHandle, fallbackSource);
+      applyImportResult({
+        source: sourceName,
+        messages,
+        fileCount: selected.length,
+        mediaCount: state.mediaUrls.size,
+        statusPrefix: "Imported",
+        channelHandle,
+        channelEntryLink,
+      });
+      if (rootName) {
+        saveHistory(`browser-folder:${rootName}`, sourceName, { browserOnly: true });
+      }
+    }
+    async function loadServerPath(pathOverride = "") {
+      const override = typeof pathOverride === "string" ? pathOverride : "";
+      const path = String(override || els.pathInput.value).trim();
+      if (!path) {
+        setStatus("Paste a Telegram export folder path first.", true);
+        els.pathInput.focus();
+        return;
+      }
+      els.pathInput.value = path;
+      els.pathImportBtn.disabled = true;
+      setStatus("Scanning local export path...");
+      try {
+        const response = await fetch("/api/scan-path", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path }),
+        });
+        const scan = await response.json().catch(() => ({}));
+        if (!response.ok || !scan.ok) throw new Error(scan.error || "Unable to scan that path.");
+        clearMediaUrls();
+        for (const item of scan.media || []) {
+          for (const key of item.keys || []) {
+            if (key) state.mediaUrls.set(normalizePath(key), item.url);
+          }
+        }
+        const files = (scan.files || []).filter((file) => /\.(html?|json)$/i.test(file.name));
+        if (!files.length) throw new Error("No readable message export files returned by the local scanner.");
+        files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        const htmlFiles = files.filter((file) => /\.html?$/i.test(file.name));
+        const jsonFiles = files.filter((file) => /\.json$/i.test(file.name));
+        if (jsonFiles.length && files.length > 1) throw new Error("When a JSON export is present, import it alone.");
+        let messages = [];
+        let channelHandle = remapTelegramChannel(scan.channel_handle || "");
+        let channelEntryLink = "";
+        if (jsonFiles.length === 1) {
+          const data = await fetch(jsonFiles[0].url).then((res) => res.json());
+          messages = parseJson(data);
+        } else {
+          const htmlTexts = await Promise.all(htmlFiles.map(async (file) => {
+            const text = await fetch(file.url).then((res) => {
+              if (!res.ok) throw new Error(`Cannot read ${file.name}`);
+              return res.text();
+            });
+            return { file, text };
+          }));
+          const title = scan.display_name || scan.source || htmlTexts.map((item) => extractExportTitle(item.text)).find(Boolean) || "";
+          channelHandle = channelHandle || inferTelegramChannelFromTexts(htmlTexts, title, scan.root || path);
+          channelEntryLink = inferTelegramEntryLinkFromTexts(htmlTexts);
+          for (const item of htmlTexts) messages.push(...parseTelegramHtml(item.text, { fileUrl: item.file.url, fileName: item.file.name, channelHandle }));
+        }
+        applyImportResult({
+          source: scan.display_name || scan.source || path,
+          messages,
+          fileCount: files.length,
+          mediaCount: scan.counts?.media_files ?? state.mediaUrls.size,
+          statusPrefix: "Imported from path",
+          channelHandle,
+          channelEntryLink,
+        });
+        const organizedRoot = scan.root || path;
+        els.pathInput.value = organizedRoot;
+        saveHistory(organizedRoot, scan.display_name || scan.source || organizedRoot);
+        loadKnownImports();
+        if (scan.original_root && scan.original_root !== organizedRoot) {
+          const method = scan.organized?.method ? ` via ${scan.organized.method}` : "";
+          setStatus(`Imported from ${scan.display_name || scan.source || "Telegram export"}. Stored at ${organizedRoot}${method}.`);
+        }
+      } catch (error) {
+        setStatus(error.message || String(error), true);
+        els.importNote.textContent = "Path import works when the EXE local server is running.";
+      } finally {
+        els.pathImportBtn.disabled = false;
+      }
+    }
+    function filteredRows() {
+      const query = els.query.value.trim().toLowerCase();
+      let rows = state.messages.filter((msg) => {
+        if (!els.includeForwarded.checked && msg.forwardedFrom) return false;
+        if (state.selectedEmoji !== "__all" && !msg.reactions.some((rx) => rx.emoji === state.selectedEmoji)) return false;
+        if (!query) return true;
+        return msg.searchText.includes(query);
+      });
+      const mode = els.sortMode.value;
+      rows.sort((a, b) => {
+        const mediaDelta = b.mediaCount - a.mediaCount;
+        if (mode === "reactions") return mediaDelta || b.total - a.total || b.score - a.score;
+        if (mode === "date_desc") return mediaDelta || b.timestamp - a.timestamp;
+        if (mode === "date_asc") return mediaDelta || a.timestamp - b.timestamp;
+        return mediaDelta || b.score - a.score || b.total - a.total;
+      });
+      return rows;
+    }
+    function renderEmoji() {
+      const items = state.emojiItems;
+      const total = state.emojiTotal;
+      els.emojiList.innerHTML = "";
+      [{ emoji: "__all", count: total, label: "All" }, ...items].forEach((item) => {
+        const btn = document.createElement("button");
+        btn.className = `chip${state.selectedEmoji === item.emoji ? " active" : ""}`;
+        btn.type = "button";
+        btn.dataset.emoji = item.emoji;
+        btn.innerHTML = `${esc(item.label || item.emoji)} <small>${n(item.count)}</small>`;
+        els.emojiList.appendChild(btn);
+      });
+      return { kinds: items.length, total };
+    }
+    function mediaItems(msg) {
+      const media = msg.media || [];
+      return media.map((item, mediaIndex) => {
+        const thumb = mediaUrl(item.thumb) || mediaUrl(item.href);
+        const full = mediaUrl(item.href) || thumb;
+        const width = Number(item.width || 0);
+        const height = Number(item.height || 0);
+        const aspect = width > 0 && height > 0 ? Math.max(.36, Math.min(2.4, width / height)) : 1;
+        return { thumb, full, mediaIndex, aspect };
+      }).filter((item) => item.thumb);
+    }
+    async function copyText(value) {
+      const text = String(value || "");
+      if (!text) throw new Error("No link to copy.");
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return;
+        } catch (_) {}
+      }
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.left = "-9999px";
+      area.style.top = "0";
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      area.remove();
+      if (!ok) throw new Error("Cannot copy link automatically.");
+    }
+    async function copyAndOpenTelegram(link, button) {
+      const resolvedLink = resolveTelegramTargetUrl(link) || link;
+      const targetUrl = TELEGRAM_WEB_JUMP_URL;
+      const opened = window.open(targetUrl, "_blank", "noopener,noreferrer");
+      if (opened) opened.focus();
+      try {
+        await copyText(resolvedLink || link);
+        if (button) {
+          const original = button.textContent;
+          button.textContent = "已复制";
+          setTimeout(() => { button.textContent = original; }, 1200);
+        }
+        const openerHint = opened ? "已打开 Telegram Web 收藏页" : `浏览器拦截了新窗口，请手动打开 ${targetUrl}`;
+        setStatus(`链接已复制。${openerHint}：${resolvedLink || targetUrl}`);
+      } catch (error) {
+        setStatus(error.message || String(error), true);
+      }
+    }
+    function activeJumpButton() {
+      return currentReel()?.querySelector("[data-jump-link]") || null;
+    }
+    function isTypingTarget(target) {
+      const tag = target?.tagName?.toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
+    }
+    function openLightbox(src) {
+      if (!src) return;
+      els.lightboxImg.src = src;
+      els.lightbox.hidden = false;
+    }
+    function closeLightbox() {
+      els.lightbox.hidden = true;
+      els.lightboxImg.removeAttribute("src");
+    }
+    function renderReelMedia(msg, index) {
+      const visible = mediaItems(msg);
+      if (!visible.length) {
+        const count = msg.media?.length || 0;
+        return `<div class="reel-no-media"><div><strong>${count ? `${n(count)} photos` : "No photo"}</strong><span>${count ? "Import the whole folder to preview images." : "Text or unsupported media."}</span></div></div>`;
+      }
+      const slides = visible.map((item, photoIndex) => `
+        <button class="reel-slide media-open" type="button" data-full="${esc(item.full)}" data-photo="${photoIndex}">
+          <img class="slide-bg" src="${esc(item.thumb)}" alt="" loading="lazy" decoding="async">
+          <img class="slide-img" src="${esc(item.thumb)}" alt="photo ${photoIndex + 1}" loading="${photoIndex === 0 ? "eager" : "lazy"}" decoding="async">
+        </button>
+      `).join("");
+      const dots = "";
+      const nav = visible.length > 1
+        ? `<div class="photo-nav"><button type="button" data-dir="-1" data-reel="${index}" aria-label="previous photo"></button><button type="button" data-dir="1" data-reel="${index}" aria-label="next photo"></button></div>`
+        : "";
+      const controls = visible.length > 1 ? visible.map((_item, photoIndex) => `
+        <button class="media-thumb${photoIndex === 0 ? " active" : ""}" type="button" data-photo="${photoIndex}" aria-label="show photo ${photoIndex + 1}">
+        </button>
+      `).join("") : "";
+      return `
+        <div class="media-board">
+          <div class="main-panel">
+            <div class="reel-carousel" data-photo-count="${visible.length}">
+              ${slides}
+            </div>
+            ${dots}
+            ${nav}
+          </div>
+          ${controls ? `<div class="thumb-strip">${controls}</div>` : ""}
+        </div>
+      `;
+    }
+    function renderOpenActions(msg) {
+      const link = unifiedLinkForMessage(msg);
+      if (!link) return `<div class="reel-links"><button class="source-link" type="button" disabled>无链接</button></div>`;
+      return `<div class="reel-links"><button class="source-link" type="button" data-jump-link="${esc(link)}">复制链接</button></div>`;
+    }
+    function renderReel(msg, index) {
+      const height = galleryItemHeight();
+      return `
+        <article class="reel" data-index="${index}" data-photo-index="0" style="height:${height}px;min-height:${height}px">
+          <div class="reel-media">${renderReelMedia(msg, index)}</div>
+          <div class="reel-gradient"></div>
+          <div class="reel-actions">
+            <div class="action-bubble"><div>${n(msg.score)}<small>score</small></div></div>
+            <div class="action-bubble"><div>${n(msg.total)}<small>react</small></div></div>
+            <div class="reel-reactions">${msg.reactions.slice(0, 4).map((rx) => `<div class="reel-rx">${esc(rx.emoji)} ${n(rx.count)}</div>`).join("")}</div>
+          </div>
+          <div class="reel-overlay">
+            <div class="reel-rank">#${index + 1}</div>
+            <div class="reel-sender">${esc(msg.from || "-")}</div>
+            <div class="reel-meta">${esc(formatDate(msg.date))}${msg.media?.length ? ` - ${n(msg.media.length)} photo${msg.media.length > 1 ? "s" : ""}` : ""}</div>
+            ${renderOpenActions(msg)}
+            <div class="reel-msg">${esc(msg.text || "[non-text message]")}</div>
+          </div>
+        </article>
+      `;
+    }
+    function galleryItemHeight() {
+      return Math.max(360, Math.round(els.gallery.clientHeight || window.innerHeight || 720));
+    }
+    function matrixScreenHeight() {
+      return Math.max(360, Math.round(els.matrixGallery.clientHeight || window.innerHeight || 720));
+    }
+    function resetVirtualState() {
+      state.virtual.start = -1;
+      state.virtual.end = -1;
+      state.matrixVirtual.start = -1;
+      state.matrixVirtual.end = -1;
+    }
+    function renderGallery(reset = false) {
+      cancelAnimationFrame(state.virtual.frame);
+      if (reset) {
+        els.gallery.scrollTop = 0;
+        state.virtual.start = -1;
+        state.virtual.end = -1;
+      }
+      if (!state.rows.length) {
+        const emptyTitle = state.messages.length ? "No matches" : "No data loaded";
+        const emptyHint = state.messages.length ? "Adjust filters or import another export." : "Go to the Import page and load a Telegram export folder.";
+        els.gallery.innerHTML = `<div class="empty"><div><strong>${emptyTitle}</strong><span>${emptyHint}</span></div></div>`;
+        return;
+      }
+      const itemHeight = galleryItemHeight();
+      const total = state.rows.length;
+      const firstVisible = Math.max(0, Math.floor(els.gallery.scrollTop / itemHeight));
+      const visibleCount = Math.max(1, Math.ceil(els.gallery.clientHeight / itemHeight));
+      const start = Math.max(0, firstVisible - VIRTUAL_BUFFER);
+      const end = Math.min(total, firstVisible + visibleCount + VIRTUAL_BUFFER + 1);
+      if (state.virtual.start === start && state.virtual.end === end && state.virtual.itemHeight === itemHeight) return;
+      state.virtual = { ...state.virtual, itemHeight, start, end };
+      const top = start * itemHeight;
+      const bottom = Math.max(0, (total - end) * itemHeight);
+      const body = state.rows.slice(start, end).map((msg, offset) => renderReel(msg, start + offset)).join("");
+      els.gallery.innerHTML = `
+        <div class="virtual-spacer" style="height:${top}px"></div>
+        ${body}
+        <div class="virtual-spacer" style="height:${bottom}px"></div>
+      `;
+      requestAnimationFrame(() => {
+        applyImageFits(els.gallery);
+        alignCarousels("auto");
+      });
+    }
+    function scheduleGalleryRender() {
+      cancelAnimationFrame(state.virtual.frame);
+      state.virtual.frame = requestAnimationFrame(() => renderGallery(false));
+    }
+    function renderMatrix(reset = false) {
+      cancelAnimationFrame(state.matrixVirtual.frame);
+      if (reset) {
+        els.matrixGallery.scrollTop = 0;
+        state.matrixVirtual.start = -1;
+        state.matrixVirtual.end = -1;
+      }
+      if (!state.rows.length) {
+        const emptyTitle = state.messages.length ? "No matches" : "No data";
+        const emptyHint = state.messages.length ? "Adjust filters or import another export." : "Go to Import and load Telegram export files.";
+        els.matrixGallery.innerHTML = `<div class="empty"><div><strong>${emptyTitle}</strong><span>${emptyHint}</span></div></div>`;
+        return;
+      }
+      const screenHeight = matrixScreenHeight();
+      const totalScreens = Math.ceil(state.rows.length / MATRIX_PAGE_SIZE);
+      const currentScreen = Math.max(0, Math.floor(els.matrixGallery.scrollTop / screenHeight));
+      const startScreen = Math.max(0, currentScreen - MATRIX_BUFFER);
+      const endScreen = Math.min(totalScreens, currentScreen + MATRIX_BUFFER + 2);
+      if (state.matrixVirtual.start === startScreen && state.matrixVirtual.end === endScreen && state.matrixVirtual.screenHeight === screenHeight) return;
+      state.matrixVirtual = { ...state.matrixVirtual, screenHeight, start: startScreen, end: endScreen };
+      const screens = [];
+      for (let index = startScreen * MATRIX_PAGE_SIZE; index < endScreen * MATRIX_PAGE_SIZE && index < state.rows.length; index += MATRIX_PAGE_SIZE) {
+        const chunk = state.rows.slice(index, index + MATRIX_PAGE_SIZE);
+        screens.push(`
+          <section class="matrix-screen" style="min-height:${screenHeight}px">
+            ${chunk.map((msg, offset) => {
+              const rank = index + offset + 1;
+              const first = mediaItems(msg)[0];
+              const full = first?.full || "";
+              const thumb = first?.thumb || "";
+              const aspect = first?.aspect || 1;
+              const link = unifiedLinkForMessage(msg);
+              return `
+                <article class="matrix-card" style="--matrix-aspect:${aspect.toFixed(3)}">
+                  <button class="matrix-media${full ? " media-open" : ""}" type="button" data-full="${esc(full)}" aria-label="preview rank ${rank}">
+                    ${thumb ? `<img class="matrix-bg" src="${esc(thumb)}" alt="" loading="lazy" decoding="async"><img class="matrix-img" src="${esc(thumb)}" alt="rank ${rank}" loading="lazy" decoding="async">` : ""}
+                  </button>
+                  <div class="matrix-info">
+                    <div class="matrix-line">#${rank} ${esc(msg.from || "-")}</div>
+                    <div class="matrix-meta">${n(msg.total)} react${msg.mediaCount ? ` · ${n(msg.mediaCount)} photo${msg.mediaCount > 1 ? "s" : ""}` : ""}</div>
+                    ${link ? `<button class="matrix-jump" type="button" data-jump-link="${esc(link)}">跳转</button>` : `<button class="matrix-jump" type="button" disabled>无链接</button>`}
+                  </div>
+                </article>
+              `;
+            }).join("")}
+          </section>
+        `);
+      }
+      els.matrixGallery.innerHTML = `
+        <div class="virtual-spacer" style="height:${startScreen * screenHeight}px"></div>
+        ${screens.join("")}
+        <div class="virtual-spacer" style="height:${Math.max(0, (totalScreens - endScreen) * screenHeight)}px"></div>
+      `;
+      requestAnimationFrame(() => applyImageFits(els.matrixGallery));
+    }
+    function scheduleMatrixRender() {
+      cancelAnimationFrame(state.matrixVirtual.frame);
+      state.matrixVirtual.frame = requestAnimationFrame(() => renderMatrix(false));
+    }
+    function render() {
+      const emojiStats = renderEmoji();
+      els.messageCount.textContent = n(state.messages.length);
+      els.reactionCount.textContent = n(emojiStats.total);
+      els.emojiCount.textContent = n(emojiStats.kinds);
+      els.topScore.textContent = n(state.topScore);
+      els.openViewerBtn.disabled = !state.messages.length;
+      state.rows = filteredRows();
+      els.exportBtn.disabled = !state.rows.length;
+      resetVirtualState();
+      renderGallery(true);
+      renderMatrix(true);
+    }
+    function demo() {
+      clearMediaUrls();
+      const demoImages = ["#0ea5e9", "#f97316", "#22c55e", "#e11d48", "#8b5cf6"].map((color, index) => {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200"><rect width="900" height="1200" fill="${color}"/><circle cx="${220 + index * 70}" cy="${260 + index * 55}" r="150" fill="rgba(255,255,255,.28)"/><rect x="120" y="720" width="660" height="220" rx="36" fill="rgba(255,255,255,.2)"/><text x="450" y="850" fill="white" font-family="Segoe UI,Arial" font-size="96" font-weight="800" text-anchor="middle">PHOTO ${index + 1}</text></svg>`;
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      });
+      const multiMedia = demoImages.map((url) => ({ href: url, thumb: url }));
+      state.source = "Demo";
+      state.messages = [
+        { id: 1, date: "2026-07-03T09:12:00", from: "Alex", text: "Multi-photo ranked post.", media: multiMedia, reactions: [{ emoji: "\u{1f44d}", count: 18 }, { emoji: "\u{1f525}", count: 6 }, { emoji: "\u2764\ufe0f", count: 4 }], total: 28 },
+        { id: 2, date: "2026-07-03T10:23:00", from: "Mina", text: "Single photo post.", media: multiMedia.slice(0, 1), reactions: [{ emoji: "\u{1f44d}", count: 9 }, { emoji: "\u{1f44e}", count: 2 }], total: 11 },
+        { id: 3, date: "2026-07-03T11:05:00", from: "Chen", text: "Text-only message still works.", media: [], reactions: [{ emoji: "\u{1f44f}", count: 13 }, { emoji: "\u{1f389}", count: 7 }], total: 20 }
+      ];
+      prepareMessages(state.messages);
+      state.selectedEmoji = "__all";
+      els.sourceLabel.textContent = "Demo - 3 messages with reactions";
+      setStatus("Demo data loaded.");
+      els.importNote.textContent = "Demo data is ready for viewing.";
+      render();
+      setPage("viewer");
+    }
+    function exportCsv() {
+      const lines = [["rank", "id", "date", "from", "score", "total_reactions", "reactions", "media", "text"]];
+      state.rows.forEach((msg, index) => lines.push([
+        index + 1, msg.id, formatDate(msg.date), msg.from, msg.score, msg.total,
+        msg.reactions.map((rx) => `${rx.emoji}:${rx.count}`).join(" "),
+        msg.media?.map((item) => item.href).join(" ") || "",
+        msg.text
+      ]));
+      const csv = "\ufeff" + lines.map((row) => row.map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `tg-reaction-ranking-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    function updatePhotoIndicators(reel, index, scrollThumb = true) {
+      reel.dataset.photoIndex = String(index);
+      reel.querySelectorAll(".photo-dot").forEach((dot, dotIndex) => dot.classList.toggle("active", dotIndex === index));
+      reel.querySelectorAll(".media-thumb").forEach((thumb, thumbIndex) => thumb.classList.toggle("active", thumbIndex === index));
+      if (scrollThumb) {
+        const activeThumb = reel.querySelector(`.media-thumb[data-photo="${index}"]`);
+        const strip = activeThumb?.closest(".thumb-strip");
+        if (activeThumb && strip) {
+          const thumbLeft = activeThumb.offsetLeft;
+          const thumbRight = thumbLeft + activeThumb.offsetWidth;
+          const thumbTop = activeThumb.offsetTop;
+          const thumbBottom = thumbTop + activeThumb.offsetHeight;
+          if (thumbLeft < strip.scrollLeft) strip.scrollLeft = thumbLeft;
+          if (thumbRight > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = thumbRight - strip.clientWidth;
+          if (thumbTop < strip.scrollTop) strip.scrollTop = thumbTop;
+          if (thumbBottom > strip.scrollTop + strip.clientHeight) strip.scrollTop = thumbBottom - strip.clientHeight;
+        }
+      }
+    }
+    function switchToPhoto(reel, index, behavior = "smooth") {
+      if (!reel) return;
+      const carousel = reel.querySelector(".reel-carousel");
+      const slides = Array.from(reel.querySelectorAll(".reel-slide"));
+      if (!carousel || !slides.length) return;
+      const next = Math.max(0, Math.min(slides.length - 1, Number(index) || 0));
+      updatePhotoIndicators(reel, next);
+      carousel.scrollTo({ left: carousel.clientWidth * next, behavior });
+    }
+    function switchPhoto(reel, dir) {
+      const slides = Array.from(reel?.querySelectorAll(".reel-slide") || []);
+      if (!reel || slides.length <= 1) return;
+      const current = Number(reel.dataset.photoIndex || 0);
+      const next = (current + dir + slides.length) % slides.length;
+      switchToPhoto(reel, next);
+    }
+    function imageFitFor(img) {
+      const slide = img?.closest?.(".reel-slide");
+      if (!slide || !img.naturalWidth || !img.naturalHeight) return;
+      const rect = slide.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const imageAspect = img.naturalWidth / img.naturalHeight;
+      const boxAspect = rect.width / rect.height;
+      const ratio = imageAspect / boxAspect;
+      let fit = "contain";
+      if (ratio >= 0.78 && ratio <= 1.28) {
+        fit = "cover";
+      } else if (ratio >= 0.56 && ratio <= 1.78) {
+        fit = "crop";
+      }
+      slide.dataset.fit = fit;
+      slide.dataset.imageAspect = imageAspect >= 1 ? "wide" : "tall";
+    }
+    function matrixFitFor(img) {
+      const card = img?.closest?.(".matrix-card");
+      if (!card || !img.naturalWidth || !img.naturalHeight) return;
+      const imageAspect = Math.max(.36, Math.min(2.4, img.naturalWidth / img.naturalHeight));
+      card.style.setProperty("--matrix-aspect", imageAspect.toFixed(3));
+    }
+    function applyImageFits(root = els.gallery) {
+      root.querySelectorAll(".slide-img").forEach((img) => {
+        if (img.complete && img.naturalWidth) imageFitFor(img);
+      });
+      els.matrixGallery?.querySelectorAll(".matrix-card .matrix-img").forEach((img) => {
+        if (img.complete && img.naturalWidth) matrixFitFor(img);
+      });
+    }
+    function syncCarousel(carousel) {
+      const reel = carousel.closest(".reel");
+      if (!reel) return;
+      const slides = Array.from(reel.querySelectorAll(".reel-slide"));
+      if (!slides.length) return;
+      const index = Math.max(0, Math.min(slides.length - 1, Math.round(carousel.scrollLeft / Math.max(1, carousel.clientWidth))));
+      updatePhotoIndicators(reel, index);
+    }
+    function alignCarousels(behavior = "auto") {
+      els.gallery.querySelectorAll(".reel").forEach((reel) => {
+        switchToPhoto(reel, Number(reel.dataset.photoIndex || 0), behavior);
+      });
+    }
+    function currentReel() {
+      const reels = Array.from(els.gallery.querySelectorAll(".reel"));
+      if (!reels.length) return null;
+      const center = els.gallery.scrollTop + els.gallery.clientHeight / 2;
+      return reels.reduce((best, reel) => {
+        const reelCenter = reel.offsetTop + reel.offsetHeight / 2;
+        const distance = Math.abs(center - reelCenter);
+        return !best || distance < best.distance ? { reel, distance } : best;
+      }, null)?.reel || reels[0];
+    }
+    function currentRowIndex() {
+      const height = state.virtual.itemHeight || galleryItemHeight();
+      return Math.max(0, Math.min(state.rows.length - 1, Math.round(els.gallery.scrollTop / Math.max(1, height))));
+    }
+    function scrollReel(dir) {
+      if (!state.rows.length) return;
+      const height = state.virtual.itemHeight || galleryItemHeight();
+      const targetIndex = Math.max(0, Math.min(state.rows.length - 1, currentRowIndex() + dir));
+      els.gallery.scrollTo({ top: targetIndex * height, behavior: "smooth" });
+    }
+    els.fileInput.addEventListener("change", (e) => loadFiles(e.target.files).finally(() => e.target.value = ""));
+    els.folderInput.addEventListener("change", (e) => loadFiles(e.target.files).finally(() => e.target.value = ""));
+    els.pathImportBtn.addEventListener("click", () => loadServerPath());
+    els.pathInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        loadServerPath();
+      }
+    });
+    els.demoBtn.addEventListener("click", demo);
+    els.importPageBtn.addEventListener("click", () => setPage("import"));
+    els.viewerPageBtn.addEventListener("click", () => setPage("viewer"));
+    els.matrixPageBtn.addEventListener("click", () => setPage("matrix"));
+    els.openViewerBtn.addEventListener("click", () => setPage("viewer"));
+    els.viewerToggle.addEventListener("click", () => els.viewerControls.classList.toggle("open"));
+    els.themeBtn.addEventListener("click", toggleTheme);
+    els.exportBtn.addEventListener("click", exportCsv);
+    els.closeBtn.addEventListener("click", async () => {
+      try { await fetch("/__shutdown", { method: "POST" }); } catch (_) {}
+      window.close();
+      setStatus("App is shutting down. You can close this tab.");
+    });
+    [els.includeForwarded, els.query, els.sortMode].forEach((el) => {
+      el.addEventListener("input", render);
+      el.addEventListener("change", render);
+    });
+    els.emojiList.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-emoji]");
+      if (!btn) return;
+      state.selectedEmoji = btn.dataset.emoji;
+      render();
+    });
+    els.historyList.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-history-path]");
+      if (!btn) return;
+      loadServerPath(btn.dataset.historyPath);
+    });
+    els.refreshImportsBtn.addEventListener("click", loadKnownImports);
+    els.gallery.addEventListener("click", (event) => {
+      const jump = event.target.closest("[data-jump-link]");
+      if (jump) {
+        event.preventDefault();
+        copyAndOpenTelegram(jump.dataset.jumpLink, jump);
+        return;
+      }
+      const media = event.target.closest(".media-open");
+      if (media) {
+        event.preventDefault();
+        openLightbox(media.dataset.full);
+        return;
+      }
+      const thumb = event.target.closest(".media-thumb");
+      if (thumb) {
+        switchToPhoto(thumb.closest(".reel"), Number(thumb.dataset.photo || 0));
+        return;
+      }
+      const button = event.target.closest(".photo-nav button");
+      if (!button) return;
+      const reel = button.closest(".reel");
+      switchPhoto(reel, Number(button.dataset.dir || 1));
+    });
+    els.gallery.addEventListener("load", (event) => {
+      if (event.target.classList?.contains("slide-img")) imageFitFor(event.target);
+    }, true);
+    els.matrixGallery.addEventListener("click", (event) => {
+      const jump = event.target.closest("[data-jump-link]");
+      if (jump) {
+        event.preventDefault();
+        copyAndOpenTelegram(jump.dataset.jumpLink, jump);
+        return;
+      }
+      const media = event.target.closest(".media-open");
+      if (!media) return;
+      openLightbox(media.dataset.full);
+    });
+    els.matrixGallery.addEventListener("load", (event) => {
+      if (event.target.closest?.(".matrix-card")) matrixFitFor(event.target);
+    }, true);
+    els.lightboxBackdrop.addEventListener("click", closeLightbox);
+    els.gallery.addEventListener("scroll", (event) => {
+      if (event.target === els.gallery) scheduleGalleryRender();
+      const carousel = event.target.closest?.(".reel-carousel");
+      if (carousel) syncCarousel(carousel);
+    }, true);
+    els.matrixGallery.addEventListener("scroll", scheduleMatrixRender);
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !els.lightbox.hidden) {
+        closeLightbox();
+        return;
+      }
+      if (els.viewerPage.hidden) return;
+      if (event.key === "Enter" && !isTypingTarget(event.target)) {
+        const button = activeJumpButton();
+        if (button) {
+          event.preventDefault();
+          copyAndOpenTelegram(button.dataset.jumpLink, button);
+        }
+      }
+      if (event.key === "ArrowDown") { event.preventDefault(); scrollReel(1); }
+      if (event.key === "ArrowUp") { event.preventDefault(); scrollReel(-1); }
+      if (event.key === "ArrowRight") { event.preventDefault(); const reel = currentReel(); if (reel) switchPhoto(reel, 1); }
+      if (event.key === "ArrowLeft") { event.preventDefault(); const reel = currentReel(); if (reel) switchPhoto(reel, -1); }
+      if (event.key === "Escape") els.viewerControls.classList.remove("open");
+    });
+    ["dragenter", "dragover"].forEach((type) => els.drop.addEventListener(type, (event) => {
+      event.preventDefault();
+      els.drop.classList.add("drag");
+    }));
+    ["dragleave", "drop"].forEach((type) => els.drop.addEventListener(type, (event) => {
+      event.preventDefault();
+      els.drop.classList.remove("drag");
+    }));
+    els.drop.addEventListener("drop", (event) => loadFiles(event.dataTransfer.files));
+    setTheme(localStorage.getItem("tgRankerTheme") || "dark");
+    loadHistory();
+    loadKnownImports();
+    let resizeFrame = 0;
+    function handleResize() {
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => {
+        state.virtual.itemHeight = 0;
+        state.matrixVirtual.screenHeight = 0;
+        renderGallery(false);
+        renderMatrix(false);
+        applyImageFits();
+        alignCarousels("auto");
+      });
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    if ("ResizeObserver" in window && els.topbar) {
+      new ResizeObserver(handleResize).observe(els.topbar);
+    }
+  </script>
+</body>
+</html>

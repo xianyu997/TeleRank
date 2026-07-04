@@ -1,0 +1,10 @@
+build/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+*.tmp
+.venv/
+.env
+tg_ranker_server.*.log
+*.spec.bak
