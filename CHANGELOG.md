@@ -1,10 +1,10 @@
-# Changelog
+# 更新记录
 
 ## v2026.07.04-auto-links
 
-- Added automatic Telegram channel and message link detection.
-- Removed manual channel setting from the interface.
-- Restored visible copy and jump buttons in viewer and matrix pages.
-- Added fallback to channel entry or invite links when public message links cannot be inferred.
-- Improved Telegram export folder archiving under `D:\TelegramReactionRanker\Imports`.
-- Added photo-first viewer and responsive matrix browsing modes.
+- 新增 Telegram 频道和消息链接自动识别。
+- 删除界面里的手动频道设置。
+- 恢复查看页的“复制链接”和矩阵页的“跳转”按钮。
+- 无法确认公开消息直链时，自动退回到频道入口或邀请链接。
+- 改进导入文件夹整理逻辑，默认归档到 `D:\TelegramReactionRanker\Imports`。
+- 新增以图片为主体的观看页和响应式矩阵浏览模式。
