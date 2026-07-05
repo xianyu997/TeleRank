@@ -6,7 +6,7 @@ Telegram 表情反馈排行查看器。把 Telegram Desktop 导出的聊天记�
 
 普通用户直接下载 EXE 即可：
 
-[下载 TGReactionRanker.exe](https://github.com/xianyu997/tg-reaction-ranker/releases/download/v2026.07.05-matrix-link-fix/TGReactionRanker.exe)
+[下载 TGReactionRanker.exe](dist/TGReactionRanker.exe)
 
 运行后会自动打开本地网页界面。软件本体是本地程序，不需要部署服务器。
 
@@ -24,8 +24,10 @@ Telegram 导出文件里有很多图片和消息，人工翻找很慢。这个�
 - 支持导入包含 `messages*.html` 和 `photos` 的完整导出文件夹。
 - 自动把导入内容归档到 `D:\TelegramReactionRanker\Imports`。
 - 导入历史会保留在页面里，后续可以一键重新打开。
+- 导入频道列表支持收藏、序号和手动排序，方便整理常用频道。
 - 查看页是大图滑动浏览，矩阵页适合快速扫图。
 - 自动识别 Telegram 消息链接。
+- 自动识别失败时，可以手动填写频道主页链接，例如 `https://t.me/SMkiss1v1`。
 - 无法识别公开消息直链时，会退回到导出内容里的频道入口或邀请链接。
 - 支持黑色主题和白色主题。
 
@@ -35,8 +37,9 @@ Telegram 导出文件里有很多图片和消息，人工翻找很慢。这个�
 2. 导出时尽量包含图片文件。
 3. 打开 `TGReactionRanker.exe`。
 4. 在导入页选择或粘贴导出文件夹路径。
-5. 进入用户观看页或矩阵页浏览排行结果。
-6. 点击“复制链接”或“跳转”复制识别到的 Telegram 链接。
+5. 在导入频道列表里收藏或调整频道顺序。
+6. 进入用户观看页或矩阵页浏览排行结果。
+7. 点击原文按钮打开对应 Telegram 消息。
 
 ## 关于链接识别
 

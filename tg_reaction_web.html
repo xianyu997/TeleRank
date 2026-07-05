@@ -120,6 +120,55 @@
     [data-theme="dark"] .btn.secondary:hover { background: #223146; }
     .btn:disabled { opacity: .5; cursor: not-allowed; }
     .hidden-input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+    .modal[hidden] { display: none; }
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.58);
+    }
+    .modal-panel {
+      position: relative;
+      width: min(520px, 100%);
+      background: var(--panel);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .modal-title {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.2;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .modal-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      word-break: break-all;
+    }
 
     main {
       width: 100%;
@@ -246,7 +295,7 @@
     .history-list {
       display: grid;
       gap: 8px;
-      max-height: 260px;
+      max-height: 360px;
       overflow: auto;
     }
     .history-head {
@@ -259,13 +308,52 @@
     .history-head .section-title { margin: 0; }
     .history-item {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr) auto;
       align-items: center;
       gap: 8px;
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 9px;
       background: var(--field-bg);
+    }
+    .history-index {
+      width: 34px;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 12px;
+      background: var(--panel);
+    }
+    .history-main { min-width: 0; }
+    .history-tools {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .history-mini {
+      width: 32px;
+      min-height: 32px;
+      padding: 0;
+      border-radius: 8px;
+      display: inline-grid;
+      place-items: center;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .history-mini.active {
+      border-color: #f59e0b;
+      color: #b45309;
+      background: #fffbeb;
+    }
+    [data-theme="dark"] .history-mini.active {
+      color: #fbbf24;
+      background: #2a1f09;
     }
     .virtual-spacer {
       width: 1px;
@@ -971,6 +1059,7 @@
         <button class="btn" id="importPageBtn" type="button">Import</button>
         <button class="btn secondary" id="viewerPageBtn" type="button">Viewer</button>
         <button class="btn secondary" id="matrixPageBtn" type="button">Matrix</button>
+        <button class="btn secondary" id="manualChannelBtn" type="button" disabled>频道链接</button>
         <button class="btn secondary" id="themeBtn" type="button">Theme: Black</button>
         <button class="btn secondary" id="exportBtn" type="button" disabled>Export CSV</button>
         <button class="btn secondary" id="closeBtn" type="button">Close App</button>
@@ -1021,16 +1110,6 @@
       </div>
     </section>
 
-    <section class="panel import-panel">
-      <h2 class="section-title">Import summary</h2>
-      <div class="metrics">
-        <div class="metric"><strong id="messageCount">0</strong><span>messages with reactions</span></div>
-        <div class="metric"><strong id="reactionCount">0</strong><span>total reactions</span></div>
-        <div class="metric"><strong id="emojiCount">0</strong><span>emoji kinds</span></div>
-        <div class="metric"><strong id="topScore">0</strong><span>top score</span></div>
-      </div>
-      <div class="import-note" id="importNote">Photos are indexed only when the whole export folder is selected.</div>
-    </section>
   </main>
 
   <main class="page viewer-layout" id="viewerPage" hidden>
@@ -1082,23 +1161,51 @@
     <img class="lightbox-img" id="lightboxImg" alt="">
   </div>
 
+  <div class="modal" id="channelModal" hidden>
+    <div class="modal-backdrop" id="channelModalBackdrop"></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="channelModalTitle">
+      <div class="modal-head">
+        <h2 class="modal-title" id="channelModalTitle">设置频道链接</h2>
+        <button class="btn secondary" id="channelCancelBtn" type="button">关闭</button>
+      </div>
+      <div class="field">
+        <label for="channelUrlInput">频道主页链接</label>
+        <input class="input" id="channelUrlInput" type="text" placeholder="https://t.me/SMkiss1v1">
+        <div class="modal-note" id="channelCurrent">当前未设置手动频道。</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn secondary" id="channelClearBtn" type="button">清除手动设置</button>
+        <button class="btn" id="channelApplyBtn" type="button">应用</button>
+      </div>
+      <div class="modal-note">应用后会立即把当前频道所有消息的按钮改成对应的原文跳转，例如 https://t.me/SMkiss1v1/消息ID。</div>
+    </div>
+  </div>
+
   <script>
-    const TELEGRAM_WEB_JUMP_URL = "https://web.telegram.org/k/#@tir10057";
     const HISTORY_KEY = "tgRankerImportHistory";
+    const CHANNEL_OVERRIDE_KEY = "tgRankerChannelOverrides";
+    const CHANNEL_PREFS_KEY = "tgRankerChannelPrefs";
+    const HISTORY_LIMIT = 96;
     const VIRTUAL_BUFFER = 4;
     const MATRIX_BATCH_SIZE = 96;
     const state = {
       source: "",
+      sourceKey: "",
       messages: [],
       rows: [],
       channelHandle: "",
+      autoChannelHandle: "",
+      manualChannelHandle: "",
       channelEntryLink: "",
       selectedEmoji: "__all",
       mediaUrls: new Map(),
+      localUrls: new Set(),
       emojiItems: [],
       emojiTotal: 0,
       topScore: 0,
       history: [],
+      channelFavorites: {},
+      channelOrder: [],
       virtual: { itemHeight: 0, start: -1, end: -1, frame: 0 },
       matrixVirtual: { rendered: 0, frame: 0 }
     };
@@ -1108,13 +1215,15 @@
       fileInput: $("fileInput"), folderInput: $("folderInput"), drop: $("drop"),
       pathInput: $("pathInput"), pathImportBtn: $("pathImportBtn"),
       sourceLabel: $("sourceLabel"), status: $("status"), exportBtn: $("exportBtn"),
-      demoBtn: $("demoBtn"), closeBtn: $("closeBtn"), themeBtn: $("themeBtn"), emojiList: $("emojiList"),
+      demoBtn: $("demoBtn"), closeBtn: $("closeBtn"), themeBtn: $("themeBtn"), manualChannelBtn: $("manualChannelBtn"), emojiList: $("emojiList"),
       importPageBtn: $("importPageBtn"), viewerPageBtn: $("viewerPageBtn"), matrixPageBtn: $("matrixPageBtn"),
       importPage: $("importPage"), viewerPage: $("viewerPage"), matrixPage: $("matrixPage"),
       openViewerBtn: $("openViewerBtn"), importNote: $("importNote"),
       viewerToggle: $("viewerToggle"), viewerControls: $("viewerControls"),
       historyList: $("historyList"), refreshImportsBtn: $("refreshImportsBtn"), matrixGallery: $("matrixGallery"),
       lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxBackdrop: $("lightboxBackdrop"),
+      channelModal: $("channelModal"), channelModalBackdrop: $("channelModalBackdrop"), channelUrlInput: $("channelUrlInput"),
+      channelCurrent: $("channelCurrent"), channelApplyBtn: $("channelApplyBtn"), channelClearBtn: $("channelClearBtn"), channelCancelBtn: $("channelCancelBtn"),
       includeForwarded: $("includeForwarded"),
       messageCount: $("messageCount"), reactionCount: $("reactionCount"),
       emojiCount: $("emojiCount"), topScore: $("topScore"),
@@ -1129,6 +1238,9 @@
     function setStatus(text, warn = false) {
       els.status.textContent = text;
       els.status.className = warn ? "status warn" : "status";
+    }
+    function setImportNote(text) {
+      if (els.importNote) els.importNote.textContent = text;
     }
     function setPage(page) {
       if ((page === "viewer" || page === "matrix") && !state.messages.length) {
@@ -1158,25 +1270,198 @@
     function toggleTheme() {
       setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
     }
+    function loadChannelOverrides() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(CHANNEL_OVERRIDE_KEY) || "{}");
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+      } catch (_) {
+        return {};
+      }
+    }
+    function saveChannelOverrides(overrides) {
+      localStorage.setItem(CHANNEL_OVERRIDE_KEY, JSON.stringify(overrides || {}));
+    }
+    function sourceKeyFor(value) {
+      return String(value || "").trim().toLowerCase();
+    }
+    function getChannelOverride(key) {
+      const normalized = sourceKeyFor(key);
+      if (!normalized) return "";
+      return remapTelegramChannel(loadChannelOverrides()[normalized] || "");
+    }
+    function setChannelOverride(key, handle) {
+      const normalized = sourceKeyFor(key);
+      if (!normalized) return;
+      const overrides = loadChannelOverrides();
+      const clean = remapTelegramChannel(handle || "");
+      if (clean) overrides[normalized] = clean;
+      else delete overrides[normalized];
+      saveChannelOverrides(overrides);
+    }
+    function manualHandleFromInput(value) {
+      let text = String(value || "").trim();
+      if (!text) return "";
+      const webMatch = text.match(/web\.telegram\.org\/[^#]*#@([A-Za-z0-9_]{3,})/i);
+      if (webMatch) return remapTelegramChannel(webMatch[1]);
+      const urlMatch = text.match(/(?:https?:\/\/)?(?:t\.me|telegram\.me)\/(?:s\/)?([A-Za-z0-9_]{3,})(?:[/?#].*)?$/i);
+      if (urlMatch) return remapTelegramChannel(urlMatch[1]);
+      const plainMatch = text.match(/^@?([A-Za-z0-9_]{3,})$/);
+      if (plainMatch) return remapTelegramChannel(plainMatch[1]);
+      return "";
+    }
+    function sourceDisplayName() {
+      const base = String(state.source || "Telegram export").replace(/\s+@[A-Za-z0-9_]{3,}\b/g, "").trim() || "Telegram export";
+      const handle = remapTelegramChannel(state.channelHandle || "");
+      return handle ? `${base} @${handle}` : base;
+    }
+    function updateSourceLabel() {
+      els.sourceLabel.textContent = `${sourceDisplayName()} - ${n(state.messages.length)} messages with reactions`;
+    }
+    function updateChannelModalText() {
+      const current = remapTelegramChannel(state.channelHandle || "");
+      const auto = remapTelegramChannel(state.autoChannelHandle || "");
+      const manual = remapTelegramChannel(state.manualChannelHandle || "");
+      if (els.channelCurrent) {
+        els.channelCurrent.textContent = manual
+          ? `当前手动频道：@${manual}`
+          : (current ? `当前自动频道：@${current}` : "当前未设置频道链接，按钮会打开本地导出消息。");
+      }
+      if (els.channelClearBtn) els.channelClearBtn.disabled = !manual;
+      if (els.channelUrlInput && !els.channelUrlInput.value) {
+        els.channelUrlInput.value = current ? `https://t.me/${current}` : "";
+      }
+    }
+    function openChannelModal() {
+      if (!state.messages.length) {
+        setStatus("先导入频道，再设置频道链接。", true);
+        return;
+      }
+      els.channelUrlInput.value = state.channelHandle ? `https://t.me/${state.channelHandle}` : "";
+      updateChannelModalText();
+      els.channelModal.hidden = false;
+      requestAnimationFrame(() => els.channelUrlInput.focus());
+    }
+    function closeChannelModal() {
+      els.channelModal.hidden = true;
+    }
+    function applyManualChannel() {
+      const handle = manualHandleFromInput(els.channelUrlInput.value);
+      if (!handle) {
+        setStatus("频道链接格式不对。示例：https://t.me/SMkiss1v1", true);
+        els.channelUrlInput.focus();
+        return;
+      }
+      if (/bot$/i.test(handle)) {
+        setStatus("这里需要频道主页链接，不能填 bot 链接。", true);
+        return;
+      }
+      state.manualChannelHandle = handle;
+      setUnifiedChannel(handle, false);
+      setChannelOverride(state.sourceKey || state.source, handle);
+      setChannelOverride(state.source, handle);
+      updateSourceLabel();
+      render();
+      closeChannelModal();
+      setStatus(`已应用手动频道 @${handle}。当前消息会跳转到 https://t.me/${handle}/消息ID`);
+    }
+    function clearManualChannel() {
+      state.manualChannelHandle = "";
+      setChannelOverride(state.sourceKey || state.source, "");
+      setChannelOverride(state.source, "");
+      setUnifiedChannel(state.autoChannelHandle || "", false);
+      updateSourceLabel();
+      render();
+      updateChannelModalText();
+      setStatus(state.channelHandle ? `已清除手动频道，恢复自动频道 @${state.channelHandle}。` : "已清除手动频道，当前会打开本地导出消息。");
+    }
+    function normalizeHistoryKey(path) {
+      return sourceKeyFor(path);
+    }
+    function loadChannelPrefs() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(CHANNEL_PREFS_KEY) || "{}");
+        const favorites = parsed && typeof parsed.favorites === "object" && !Array.isArray(parsed.favorites) ? parsed.favorites : {};
+        state.channelFavorites = Object.fromEntries(Object.entries(favorites)
+          .map(([key, value]) => [normalizeHistoryKey(key), Boolean(value)])
+          .filter(([key, value]) => key && value));
+        state.channelOrder = Array.isArray(parsed?.order) ? parsed.order.map(normalizeHistoryKey).filter(Boolean) : [];
+      } catch (_) {
+        state.channelFavorites = {};
+        state.channelOrder = [];
+      }
+    }
+    function saveChannelPrefs() {
+      localStorage.setItem(CHANNEL_PREFS_KEY, JSON.stringify({
+        favorites: state.channelFavorites,
+        order: state.channelOrder
+      }));
+    }
+    function uniqueHistoryItems(items) {
+      const result = [];
+      const seen = new Set();
+      (items || []).map(normalizeHistoryItem).filter(Boolean).forEach((item) => {
+        const key = normalizeHistoryKey(item.path);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        result.push(item);
+      });
+      return result;
+    }
+    function syncHistoryPrefs(items) {
+      const currentKeys = uniqueHistoryItems(items).map((item) => normalizeHistoryKey(item.path));
+      const current = new Set(currentKeys);
+      const ordered = [];
+      const seen = new Set();
+      for (const key of state.channelOrder.map(normalizeHistoryKey)) {
+        if (key && current.has(key) && !seen.has(key)) {
+          ordered.push(key);
+          seen.add(key);
+        }
+      }
+      for (const key of currentKeys) {
+        if (key && !seen.has(key)) {
+          ordered.push(key);
+          seen.add(key);
+        }
+      }
+      state.channelOrder = ordered.slice(0, HISTORY_LIMIT);
+      state.channelFavorites = Object.fromEntries(Object.entries(state.channelFavorites)
+        .map(([key, value]) => [normalizeHistoryKey(key), Boolean(value)])
+        .filter(([key, value]) => key && value && current.has(key)));
+    }
+    function orderedHistoryItems(items = state.history) {
+      const normalized = uniqueHistoryItems(items).slice(0, HISTORY_LIMIT);
+      syncHistoryPrefs(normalized);
+      const orderIndex = new Map(state.channelOrder.map((key, index) => [key, index]));
+      return normalized.sort((a, b) => {
+        const aKey = normalizeHistoryKey(a.path);
+        const bKey = normalizeHistoryKey(b.path);
+        const favoriteDelta = Number(Boolean(state.channelFavorites[bKey])) - Number(Boolean(state.channelFavorites[aKey]));
+        if (favoriteDelta) return favoriteDelta;
+        const orderDelta = (orderIndex.get(aKey) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(bKey) ?? Number.MAX_SAFE_INTEGER);
+        if (orderDelta) return orderDelta;
+        return (b.updated || 0) - (a.updated || 0) || a.label.localeCompare(b.label, "zh-CN", { numeric: true });
+      });
+    }
+    function persistHistory() {
+      state.history = orderedHistoryItems(state.history).slice(0, HISTORY_LIMIT);
+      syncHistoryPrefs(state.history);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history));
+      saveChannelPrefs();
+    }
     function loadHistory() {
       try {
         const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-        state.history = Array.isArray(parsed) ? parsed.map(normalizeHistoryItem).filter(Boolean).slice(0, 12) : [];
+        state.history = Array.isArray(parsed) ? uniqueHistoryItems(parsed).slice(0, HISTORY_LIMIT) : [];
       } catch (_) {
         state.history = [];
       }
+      persistHistory();
       renderHistory();
     }
     function mergeHistory(items) {
-      const merged = [];
-      const seen = new Set();
-      [...items, ...state.history].map(normalizeHistoryItem).filter(Boolean).forEach((item) => {
-        const key = item.path.toLowerCase();
-        if (seen.has(key)) return;
-        seen.add(key);
-        merged.push(item);
-      });
-      state.history = merged.slice(0, 48);
+      state.history = uniqueHistoryItems([...(items || []), ...state.history]).slice(0, HISTORY_LIMIT);
+      persistHistory();
       renderHistory();
     }
     async function loadKnownImports() {
@@ -1205,31 +1490,70 @@
     function saveHistory(path, label = "", options = {}) {
       const value = String(path || "").trim();
       if (!value) return;
+      const key = normalizeHistoryKey(value);
       const entry = {
         path: value,
         label: String(label || value).trim() || value,
         updated: Date.now() / 1000,
         browserOnly: Boolean(options.browserOnly)
       };
-      state.history = [entry, ...state.history.map(normalizeHistoryItem).filter((item) => item && item.path !== value)].slice(0, 12);
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history));
+      state.history = [entry, ...state.history.map(normalizeHistoryItem).filter((item) => item && normalizeHistoryKey(item.path) !== key)].slice(0, HISTORY_LIMIT);
+      state.channelOrder = [key, ...state.channelOrder.filter((item) => item !== key)].slice(0, HISTORY_LIMIT);
+      persistHistory();
+      renderHistory();
+    }
+    function toggleHistoryFavorite(path) {
+      const key = normalizeHistoryKey(path);
+      if (!key) return;
+      if (state.channelFavorites[key]) delete state.channelFavorites[key];
+      else {
+        state.channelFavorites[key] = true;
+        state.channelOrder = [key, ...state.channelOrder.filter((item) => item !== key)].slice(0, HISTORY_LIMIT);
+      }
+      persistHistory();
+      renderHistory();
+    }
+    function moveHistoryItem(path, direction) {
+      const key = normalizeHistoryKey(path);
+      const dir = Number(direction) < 0 ? -1 : 1;
+      const visible = orderedHistoryItems(state.history).map((item) => normalizeHistoryKey(item.path));
+      const index = visible.indexOf(key);
+      const target = index + dir;
+      if (index < 0 || target < 0 || target >= visible.length) return;
+      const keyIsFavorite = Boolean(state.channelFavorites[key]);
+      if (Boolean(state.channelFavorites[visible[target]]) !== keyIsFavorite) return;
+      [visible[index], visible[target]] = [visible[target], visible[index]];
+      state.channelOrder = [...visible, ...state.channelOrder.filter((item) => !visible.includes(item))].slice(0, HISTORY_LIMIT);
+      persistHistory();
       renderHistory();
     }
     function renderHistory() {
       if (!els.historyList) return;
-      if (!state.history.length) {
+      const items = orderedHistoryItems(state.history);
+      if (!items.length) {
         els.historyList.innerHTML = `<div class="import-note">No imported channels yet.</div>`;
         return;
       }
-      els.historyList.innerHTML = state.history.map(normalizeHistoryItem).filter(Boolean).map((item) => `
+      els.historyList.innerHTML = items.map((item, index) => {
+        const key = normalizeHistoryKey(item.path);
+        const favorite = Boolean(state.channelFavorites[key]);
+        const prevFavorite = index > 0 && Boolean(state.channelFavorites[normalizeHistoryKey(items[index - 1].path)]) === favorite;
+        const nextFavorite = index < items.length - 1 && Boolean(state.channelFavorites[normalizeHistoryKey(items[index + 1].path)]) === favorite;
+        return `
         <div class="history-item">
-          <div>
+          <div class="history-index">#${index + 1}</div>
+          <div class="history-main">
             <div class="history-path" title="${esc(item.path)}">${esc(item.label)}</div>
             <div class="import-note">${item.browserOnly ? "Browser folder import. Select the folder again to reload." : esc(item.path)}</div>
           </div>
-          ${item.browserOnly ? `<button class="btn secondary" type="button" disabled>Recorded</button>` : `<button class="btn secondary" type="button" data-history-path="${esc(item.path)}">Import</button>`}
+          <div class="history-tools">
+            <button class="btn secondary history-mini${favorite ? " active" : ""}" type="button" data-history-favorite="${esc(item.path)}" aria-label="${favorite ? "Unfavorite channel" : "Favorite channel"}">${favorite ? "&#9733;" : "&#9734;"}</button>
+            <button class="btn secondary history-mini" type="button" data-history-path="${esc(item.path)}" data-history-move="-1" aria-label="Move channel up"${prevFavorite ? "" : " disabled"}>&#8593;</button>
+            <button class="btn secondary history-mini" type="button" data-history-path="${esc(item.path)}" data-history-move="1" aria-label="Move channel down"${nextFavorite ? "" : " disabled"}>&#8595;</button>
+            ${item.browserOnly ? `<button class="btn secondary" type="button" disabled>Recorded</button>` : `<button class="btn secondary" type="button" data-history-path="${esc(item.path)}">Import</button>`}
+          </div>
         </div>
-      `).join("");
+      `; }).join("");
     }
     function normalizePath(path) {
       return decodeURIComponent(String(path || "").replaceAll("\\", "/").replace(/^\.?\//, "")).toLowerCase();
@@ -1243,11 +1567,14 @@
       for (const url of new Set(state.mediaUrls.values())) {
         if (String(url).startsWith("blob:")) URL.revokeObjectURL(url);
       }
+      for (const url of state.localUrls) URL.revokeObjectURL(url);
       state.mediaUrls.clear();
+      state.localUrls.clear();
     }
     function rememberMediaFile(file) {
       if (!/^image\//i.test(file.type) && !/\.(png|jpe?g|gif|webp)$/i.test(file.name)) return;
       const url = URL.createObjectURL(file);
+      state.localUrls.add(url);
       const fullPath = file.webkitRelativePath || file.name;
       const relativePath = relativeFromWebkit(fullPath);
       [fullPath, relativePath, file.name].forEach((key) => {
@@ -1300,11 +1627,18 @@
     const TELEGRAM_CHANNEL_REDIRECTS = Object.freeze({
       yijihimeqwq1: "yijiqwq",
       yijiqwq: "yijiqwq",
-      yijihimeqwq: "yijiqwq"
+      yijihimeqwq: "yijiqwq",
+      njdjfd: "njdjfd"
     });
     const CHANNEL_NAME_HANDLE_HINTS = Object.freeze({
       "一姬": "yijiqwq",
-      "色色前线": "yijiqwq"
+      "色色前线": "yijiqwq",
+      "花花🌸主播直播": "zbzwx",
+      "花花♡主播直播": "zbzwx",
+      "主播直播精选": "zbzwx",
+      "盯射榨精寸止女同调教套路直播": "njdjfd",
+      "盯射 阿黑颜 榨精 玩物套路直播": "njdjfd",
+      "盯射阿黑颜榨精玩物套路直播": "njdjfd"
     });
     function remapTelegramChannel(channel) {
       let value = String(channel || "").trim();
@@ -1467,11 +1801,12 @@
       const ranked = Array.from(counts.values()).sort((a, b) => (b.matched - a.matched) || (b.count - a.count) || a.channel.localeCompare(b.channel));
       const [best, second] = ranked;
       if (!best) return "";
-      const known = Object.values(TELEGRAM_CHANNEL_REDIRECTS).includes(best.channel.toLowerCase());
-      const strongMatched = best.matched >= 8 && best.matched >= (second?.matched || 0) * 2;
-      const moderateKnownMatch = known && best.matched >= 3 && best.matched > (second?.matched || 0);
-      const broadCoverage = messageIds.size >= 50 && best.matched >= Math.max(12, Math.ceil(messageIds.size * 0.03));
-      if (strongMatched || moderateKnownMatch || broadCoverage) return best.channel;
+      const secondMatched = second?.matched || 0;
+      const matchRatio = best.matched / Math.max(1, best.count);
+      const dominant = best.matched >= Math.max(8, secondMatched * 4);
+      const strongMatched = best.matched >= 8 && matchRatio >= 0.6 && dominant;
+      const broadCoverage = messageIds.size >= 50 && best.matched >= Math.max(20, Math.ceil(messageIds.size * 0.02)) && matchRatio >= 0.6 && dominant;
+      if (strongMatched || broadCoverage) return best.channel;
       return "";
     }
     function sourceLinkForMessage(channel, id, links) {
@@ -1707,46 +2042,40 @@
           return parts.kind === "private" ? `https://t.me/c/${parts.channel}/${parts.id}` : `https://t.me/${parts.channel}/${parts.id}`;
         }
       }
+      for (const link of Array.isArray(msg?.links) ? msg.links : []) {
+        const parts = telegramMessageParts(link?.href);
+        if (!parts) continue;
+        if (parts.id !== id) continue;
+        return parts.kind === "private" ? `https://t.me/c/${parts.channel}/${parts.id}` : `https://t.me/${parts.channel}/${parts.id}`;
+      }
       return "";
-    }
-    function contextualTelegramLink(msg) {
-      const links = Array.isArray(msg?.links) ? msg.links : [];
-      let best = null;
-      links.forEach((link, index) => {
-        const href = normalizeHref(link?.href);
-        if (!href) return;
-        const entry = normalizeTelegramEntryLink(href) || resolveTelegramTargetUrl(href);
-        if (!entry || !/^https?:\/\/(?:t\.me|telegram\.me)\//i.test(entry)) return;
-        const text = `${link.text || ""} ${msg?.text || ""}`.replace(/\s+/g, " ").slice(0, 900);
-        let score = 500 - index;
-        if (telegramMessageParts(entry)) score += 800;
-        if (/会员|专属|订阅|加入|频道|直播群|备用|防丢|入口|VIP/i.test(text)) score += 180;
-        if (/huahua/i.test(entry)) score += 140;
-        if (/jisou|搜索|广告|推广/i.test(`${entry} ${text}`)) score -= 260;
-        if (/addlist/i.test(entry)) score -= 80;
-        if (/\/\+/i.test(entry)) score += 60;
-        if (/bot/i.test(entry) && !/会员|专属|订阅|VIP/i.test(text)) score -= 120;
-        if (!best || score > best.score) best = { link: entry, score };
-      });
-      return best?.link || "";
     }
     function unifiedLinkForMessage(msg) {
       const handle = remapTelegramChannel(state.channelHandle || "");
       if (handle && /^\d+$/.test(String(msg.id || ""))) return `https://t.me/${handle}/${msg.id}`;
-      return messageSpecificLink(msg) || contextualTelegramLink(msg) || state.channelEntryLink || "";
+      return messageSpecificLink(msg) || msg?.exportLink || "";
     }
-    function applyImportResult({ source, messages, fileCount, mediaCount, statusPrefix, channelHandle = "", channelEntryLink = "" }) {
+    function isTelegramMessageLink(link) {
+      return Boolean(telegramMessageParts(link));
+    }
+    function jumpButtonLabel(link) {
+      return isTelegramMessageLink(link) ? "打开原文" : "打开导出";
+    }
+    function applyImportResult({ source, sourceKey = "", messages, fileCount, mediaCount, statusPrefix, channelHandle = "", channelEntryLink = "" }) {
       state.source = source || "Telegram export";
-      setUnifiedChannel(channelHandle, false);
+      state.sourceKey = sourceKey || source || "Telegram export";
+      state.autoChannelHandle = remapTelegramChannel(channelHandle || "");
+      state.manualChannelHandle = getChannelOverride(state.sourceKey) || getChannelOverride(state.source);
+      setUnifiedChannel(state.manualChannelHandle || state.autoChannelHandle, false);
       state.channelEntryLink = normalizeTelegramEntryLink(channelEntryLink) || "";
       state.messages = prepareMessages(messages);
       state.selectedEmoji = "__all";
-      els.sourceLabel.textContent = `${state.source} - ${n(messages.length)} messages with reactions`;
+      updateSourceLabel();
       const indexedMedia = mediaCount ?? state.mediaUrls.size;
       setStatus(messages.length ? `${statusPrefix || "Imported"} ${n(fileCount)} message files and indexed ${n(indexedMedia)} image files.` : "No reactions found. Make sure the HTML files are Telegram messages*.html.", !messages.length);
-      els.importNote.textContent = messages.length
+      setImportNote(messages.length
         ? `Ready for viewing. ${n(messages.length)} ranked messages, ${n(indexedMedia)} indexed images.`
-        : "No reaction data was found in the selected export.";
+        : "No reaction data was found in the selected export.");
       render();
       if (messages.length) setPage("viewer");
     }
@@ -1774,16 +2103,21 @@
       if (jsonFiles.length === 1) {
         messages = parseJson(JSON.parse(await jsonFiles[0].text()));
       } else {
-        const htmlTexts = await Promise.all(htmlFiles.map(async (file) => ({ file, text: await file.text() })));
+        const htmlTexts = await Promise.all(htmlFiles.map(async (file) => {
+          const fileUrl = URL.createObjectURL(file);
+          state.localUrls.add(fileUrl);
+          return { file, fileUrl, text: await file.text() };
+        }));
         sourceTitle = htmlTexts.map((item) => extractExportTitle(item.text)).find(Boolean) || "";
         channelHandle = inferTelegramChannelFromTexts(htmlTexts, sourceTitle, rootName);
         channelEntryLink = inferTelegramEntryLinkFromTexts(htmlTexts);
-        for (const item of htmlTexts) messages.push(...parseTelegramHtml(item.text, { fileName: item.file.name, channelHandle }));
+        for (const item of htmlTexts) messages.push(...parseTelegramHtml(item.text, { fileUrl: item.fileUrl, fileName: item.file.name, channelHandle }));
       }
       const fallbackSource = rootName || (selected.length > 1 ? `${selected.length} HTML files` : selected[0].name);
       const sourceName = displayNameForImport(sourceTitle, channelHandle, fallbackSource);
       applyImportResult({
         source: sourceName,
+        sourceKey: rootName || fallbackSource,
         messages,
         fileCount: selected.length,
         mediaCount: state.mediaUrls.size,
@@ -1847,6 +2181,7 @@
         }
         applyImportResult({
           source: scan.display_name || scan.source || path,
+          sourceKey: scan.original_root || scan.root || path,
           messages,
           fileCount: files.length,
           mediaCount: scan.counts?.media_files ?? state.mediaUrls.size,
@@ -1864,7 +2199,7 @@
         }
       } catch (error) {
         setStatus(error.message || String(error), true);
-        els.importNote.textContent = "Path import works when the EXE local server is running.";
+        setImportNote("Path import works when the EXE local server is running.");
       } finally {
         els.pathImportBtn.disabled = false;
       }
@@ -1912,44 +2247,32 @@
         return { thumb, full, mediaIndex, aspect };
       }).filter((item) => item.thumb);
     }
-    async function copyText(value) {
-      const text = String(value || "");
-      if (!text) throw new Error("No link to copy.");
-      if (navigator.clipboard?.writeText) {
-        try {
-          await navigator.clipboard.writeText(text);
-          return;
-        } catch (_) {}
-      }
-      const area = document.createElement("textarea");
-      area.value = text;
-      area.setAttribute("readonly", "");
-      area.style.position = "fixed";
-      area.style.left = "-9999px";
-      area.style.top = "0";
-      document.body.appendChild(area);
-      area.select();
-      const ok = document.execCommand("copy");
-      area.remove();
-      if (!ok) throw new Error("Cannot copy link automatically.");
-    }
-    async function copyAndOpenTelegram(link, button) {
+    function openTelegramLink(link, button) {
       const resolvedLink = resolveTelegramTargetUrl(link) || link;
-      const targetUrl = TELEGRAM_WEB_JUMP_URL;
-      const opened = window.open(targetUrl, "_blank", "noopener,noreferrer");
-      if (opened) opened.focus();
-      try {
-        await copyText(resolvedLink || link);
-        if (button) {
-          const original = button.textContent;
-          button.textContent = "已复制";
-          setTimeout(() => { button.textContent = original; }, 1200);
-        }
-        const openerHint = opened ? "已打开 Telegram Web 收藏页" : `浏览器拦截了新窗口，请手动打开 ${targetUrl}`;
-        setStatus(`链接已复制。${openerHint}：${resolvedLink || targetUrl}`);
-      } catch (error) {
-        setStatus(error.message || String(error), true);
+      if (!resolvedLink) {
+        setStatus("没有可打开的具体链接。", true);
+        return;
       }
+      const opened = window.open(resolvedLink, "_blank");
+      if (button) {
+        const original = button.textContent;
+        button.textContent = "打开中";
+        setTimeout(() => { button.textContent = original; }, 1000);
+      }
+      if (opened) {
+        try { opened.opener = null; } catch (_) {}
+        opened.focus();
+        setStatus(`已在新页面打开原文：${resolvedLink}`);
+        return;
+      }
+      const anchor = document.createElement("a");
+      anchor.href = resolvedLink;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setStatus(`已请求新页面打开原文。如果浏览器拦截弹窗，请允许此页面打开新窗口：${resolvedLink}`, true);
     }
     function activeJumpButton() {
       return currentReel()?.querySelector("[data-jump-link]") || null;
@@ -2002,8 +2325,11 @@
     }
     function renderOpenActions(msg) {
       const link = unifiedLinkForMessage(msg);
-      if (!link) return `<div class="reel-links"><button class="source-link" type="button" disabled>无链接</button></div>`;
-      return `<div class="reel-links"><button class="source-link" type="button" data-jump-link="${esc(link)}">复制链接</button></div>`;
+      if (!link) return `<div class="reel-links"><button class="source-link" type="button" disabled>无具体跳转</button></div>`;
+      return `<div class="reel-links"><button class="source-link" type="button" data-jump-link="${esc(link)}">${jumpButtonLabel(link)}</button></div>`;
+    }
+    function matrixRows() {
+      return state.rows.filter((msg) => mediaItems(msg).length);
     }
     function renderReel(msg, index) {
       const height = galleryItemHeight();
@@ -2087,7 +2413,7 @@
           <div class="matrix-info">
             <div class="matrix-line">#${rank} ${esc(msg.from || "-")}</div>
             <div class="matrix-meta">${n(msg.total)} react${msg.mediaCount ? ` · ${n(msg.mediaCount)} photo${msg.mediaCount > 1 ? "s" : ""}` : ""}</div>
-            ${link ? `<button class="matrix-jump" type="button" data-jump-link="${esc(link)}">跳转</button>` : `<button class="matrix-jump" type="button" disabled>无链接</button>`}
+            ${link ? `<button class="matrix-jump" type="button" data-jump-link="${esc(link)}">${jumpButtonLabel(link)}</button>` : `<button class="matrix-jump" type="button" disabled>无具体跳转</button>`}
           </div>
         </article>
       `;
@@ -2098,9 +2424,10 @@
         els.matrixGallery.scrollTop = 0;
         state.matrixVirtual.rendered = 0;
       }
-      if (!state.rows.length) {
-        const emptyTitle = state.messages.length ? "No matches" : "No data";
-        const emptyHint = state.messages.length ? "Adjust filters or import another export." : "Go to Import and load Telegram export files.";
+      const rows = matrixRows();
+      if (!rows.length) {
+        const emptyTitle = state.messages.length ? "没有可显示图片" : "No data";
+        const emptyHint = state.messages.length ? "当前筛选结果里没有已索引到的图片消息。" : "Go to Import and load Telegram export files.";
         els.matrixGallery.innerHTML = `<div class="empty"><div><strong>${emptyTitle}</strong><span>${emptyHint}</span></div></div>`;
         return;
       }
@@ -2108,12 +2435,12 @@
       const current = state.matrixVirtual.rendered || 0;
       let nextCount = reset || !current ? MATRIX_BATCH_SIZE : current;
       if (nearBottom) nextCount += MATRIX_BATCH_SIZE;
-      nextCount = Math.min(state.rows.length, Math.max(MATRIX_BATCH_SIZE, nextCount));
+      nextCount = Math.min(rows.length, Math.max(MATRIX_BATCH_SIZE, nextCount));
       if (!reset && current === nextCount) return;
-      const loaderHtml = nextCount < state.rows.length ? `<div class="matrix-loader">继续下滑加载更多</div>` : "";
+      const loaderHtml = nextCount < rows.length ? `<div class="matrix-loader">继续下滑加载更多</div>` : "";
       const grid = els.matrixGallery.querySelector(".matrix-grid");
       if (!reset && current && grid && nextCount > current) {
-        const cards = state.rows.slice(current, nextCount).map((msg, offset) => renderMatrixCard(msg, current + offset)).join("");
+        const cards = rows.slice(current, nextCount).map((msg, offset) => renderMatrixCard(msg, current + offset)).join("");
         grid.insertAdjacentHTML("beforeend", cards);
         els.matrixGallery.querySelector(".matrix-loader")?.remove();
         if (loaderHtml) els.matrixGallery.insertAdjacentHTML("beforeend", loaderHtml);
@@ -2122,7 +2449,7 @@
         return;
       }
       state.matrixVirtual.rendered = nextCount;
-      const cards = state.rows.slice(0, nextCount).map((msg, index) => renderMatrixCard(msg, index)).join("");
+      const cards = rows.slice(0, nextCount).map((msg, index) => renderMatrixCard(msg, index)).join("");
       els.matrixGallery.innerHTML = `<div class="matrix-grid">${cards}</div>${loaderHtml}`;
       requestAnimationFrame(() => applyImageFits(els.matrixGallery));
     }
@@ -2132,11 +2459,12 @@
     }
     function render() {
       const emojiStats = renderEmoji();
-      els.messageCount.textContent = n(state.messages.length);
-      els.reactionCount.textContent = n(emojiStats.total);
-      els.emojiCount.textContent = n(emojiStats.kinds);
-      els.topScore.textContent = n(state.topScore);
+      if (els.messageCount) els.messageCount.textContent = n(state.messages.length);
+      if (els.reactionCount) els.reactionCount.textContent = n(emojiStats.total);
+      if (els.emojiCount) els.emojiCount.textContent = n(emojiStats.kinds);
+      if (els.topScore) els.topScore.textContent = n(state.topScore);
       els.openViewerBtn.disabled = !state.messages.length;
+      els.manualChannelBtn.disabled = !state.messages.length;
       state.rows = filteredRows();
       els.exportBtn.disabled = !state.rows.length;
       resetVirtualState();
@@ -2160,7 +2488,7 @@
       state.selectedEmoji = "__all";
       els.sourceLabel.textContent = "Demo - 3 messages with reactions";
       setStatus("Demo data loaded.");
-      els.importNote.textContent = "Demo data is ready for viewing.";
+      setImportNote("Demo data is ready for viewing.");
       render();
       setPage("viewer");
     }
@@ -2295,6 +2623,17 @@
     els.openViewerBtn.addEventListener("click", () => setPage("viewer"));
     els.viewerToggle.addEventListener("click", () => els.viewerControls.classList.toggle("open"));
     els.themeBtn.addEventListener("click", toggleTheme);
+    els.manualChannelBtn.addEventListener("click", openChannelModal);
+    els.channelApplyBtn.addEventListener("click", applyManualChannel);
+    els.channelClearBtn.addEventListener("click", clearManualChannel);
+    els.channelCancelBtn.addEventListener("click", closeChannelModal);
+    els.channelModalBackdrop.addEventListener("click", closeChannelModal);
+    els.channelUrlInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyManualChannel();
+      }
+    });
     els.exportBtn.addEventListener("click", exportCsv);
     els.closeBtn.addEventListener("click", async () => {
       try { await fetch("/__shutdown", { method: "POST" }); } catch (_) {}
@@ -2312,6 +2651,16 @@
       render();
     });
     els.historyList.addEventListener("click", (event) => {
+      const favorite = event.target.closest("[data-history-favorite]");
+      if (favorite) {
+        toggleHistoryFavorite(favorite.dataset.historyFavorite);
+        return;
+      }
+      const mover = event.target.closest("[data-history-move]");
+      if (mover) {
+        moveHistoryItem(mover.dataset.historyPath, mover.dataset.historyMove);
+        return;
+      }
       const btn = event.target.closest("[data-history-path]");
       if (!btn) return;
       loadServerPath(btn.dataset.historyPath);
@@ -2321,7 +2670,7 @@
       const jump = event.target.closest("[data-jump-link]");
       if (jump) {
         event.preventDefault();
-        copyAndOpenTelegram(jump.dataset.jumpLink, jump);
+        openTelegramLink(jump.dataset.jumpLink, jump);
         return;
       }
       const media = event.target.closest(".media-open");
@@ -2347,7 +2696,7 @@
       const jump = event.target.closest("[data-jump-link]");
       if (jump) {
         event.preventDefault();
-        copyAndOpenTelegram(jump.dataset.jumpLink, jump);
+        openTelegramLink(jump.dataset.jumpLink, jump);
         return;
       }
       const media = event.target.closest(".media-open");
@@ -2357,6 +2706,11 @@
     els.matrixGallery.addEventListener("load", (event) => {
       if (event.target.closest?.(".matrix-card")) matrixFitFor(event.target);
     }, true);
+    els.matrixGallery.addEventListener("error", (event) => {
+      const img = event.target;
+      const card = img?.closest?.(".matrix-card");
+      if (card) card.hidden = true;
+    }, true);
     els.lightboxBackdrop.addEventListener("click", closeLightbox);
     els.gallery.addEventListener("scroll", (event) => {
       if (event.target === els.gallery) scheduleGalleryRender();
@@ -2365,6 +2719,10 @@
     }, true);
     els.matrixGallery.addEventListener("scroll", scheduleMatrixRender);
     window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !els.channelModal.hidden) {
+        closeChannelModal();
+        return;
+      }
       if (event.key === "Escape" && !els.lightbox.hidden) {
         closeLightbox();
         return;
@@ -2374,7 +2732,7 @@
         const button = activeJumpButton();
         if (button) {
           event.preventDefault();
-          copyAndOpenTelegram(button.dataset.jumpLink, button);
+          openTelegramLink(button.dataset.jumpLink, button);
         }
       }
       if (event.key === "ArrowDown") { event.preventDefault(); scrollReel(1); }
@@ -2393,6 +2751,7 @@
     }));
     els.drop.addEventListener("drop", (event) => loadFiles(event.dataTransfer.files));
     setTheme(localStorage.getItem("tgRankerTheme") || "dark");
+    loadChannelPrefs();
     loadHistory();
     loadKnownImports();
     let resizeFrame = 0;

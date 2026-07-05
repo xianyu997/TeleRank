@@ -1,4 +1,5 @@
 import http.server
+import difflib
 import html
 import json
 import mimetypes
@@ -19,21 +20,29 @@ from pathlib import Path
 
 APP_FILE = "tg_reaction_web.html"
 PREFERRED_PORT = 1717
-APP_VERSION = "2026-07-05-matrix-link-fix"
+APP_VERSION = "2026-07-06-channel-library"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
 ARCHIVE_ROOT = Path("D:/TelegramReactionRanker/Imports")
 WINDOWS_INVALID_NAME_CHARS = '<>:"/\\|?*'
 CHANNEL_NAME_HANDLE_HINTS = {
     "一姬": "yijiqwq",
     "色色前线": "yijiqwq",
+    "花花🌸主播直播": "zbzwx",
+    "花花♡主播直播": "zbzwx",
+    "主播直播精选": "zbzwx",
+    "盯射榨精寸止女同调教套路直播": "njdjfd",
+    "盯射 阿黑颜 榨精 玩物套路直播": "njdjfd",
+    "盯射阿黑颜榨精玩物套路直播": "njdjfd",
 }
 TELEGRAM_CHANNEL_REDIRECTS = {
     "yijihimeqwq1": "yijiqwq",
     "yijiqwq": "yijiqwq",
     "yijihimeqwq": "yijiqwq",
+    "njdjfd": "njdjfd",
 }
 SCAN_CACHE = {}
 SCAN_LOCK = threading.Lock()
+HANDLE_TITLE_CACHE = {}
 
 
 def app_dir():
@@ -222,28 +231,181 @@ def infer_handle_from_paths(root):
     return ""
 
 
+def is_under_archive_root(root):
+    try:
+        root.resolve().relative_to(ARCHIVE_ROOT.resolve())
+        return True
+    except OSError:
+        return False
+    except ValueError:
+        return False
+
+
+def normalize_title_for_compare(value):
+    text = normalize_space(value).lower()
+    text = re.sub(r"telegram:\s*contact\s*@?[a-z0-9_]+", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"@[a-z0-9_]+", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"[^\w\u4e00-\u9fff]+", "", text, flags=re.UNICODE)
+    return text
+
+
+def titles_match(export_title, remote_title):
+    left = normalize_title_for_compare(export_title)
+    right = normalize_title_for_compare(remote_title)
+    if not left or not right:
+        return False
+    if left == right:
+        return True
+    if min(len(left), len(right)) >= 6 and (left in right or right in left):
+        return True
+    return difflib.SequenceMatcher(None, left, right).ratio() >= 0.72
+
+
+def extract_remote_title(text):
+    patterns = [
+        r'<meta\s+property=["\']og:title["\']\s+content=["\']([^"\']+)["\']',
+        r'<meta\s+content=["\']([^"\']+)["\']\s+property=["\']og:title["\']',
+        r'<title>([\s\S]*?)</title>',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text or "", re.IGNORECASE)
+        if match:
+            return normalize_space(strip_tags(match.group(1)))
+    return ""
+
+
+def fetch_telegram_public_title(handle):
+    clean = remap_telegram_channel(handle)
+    if not clean:
+        return ""
+    key = clean.lower()
+    if key in HANDLE_TITLE_CACHE:
+        return HANDLE_TITLE_CACHE[key]
+    title = ""
+    for url in (f"https://t.me/s/{clean}", f"https://t.me/{clean}"):
+        try:
+            request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(request, timeout=5) as response:
+                text = response.read(256 * 1024).decode("utf-8", errors="ignore")
+            title = extract_remote_title(text)
+            if title:
+                break
+        except Exception:
+            continue
+    HANDLE_TITLE_CACHE[key] = title
+    return title
+
+
+def add_handle_candidate(candidates, handle, score):
+    clean = remap_telegram_channel(handle)
+    if not clean or clean.lower().endswith("bot"):
+        return
+    lowered = clean.lower()
+    current = candidates.get(lowered)
+    if not current or score > current[0]:
+        candidates[lowered] = (score, clean)
+
+
+def collect_handle_candidates(message_files):
+    candidates = {}
+    for path in message_files[:8]:
+        if path.suffix.lower() not in {".html", ".htm"}:
+            continue
+        text = read_text_sample(path, 1024 * 1024)
+        for match in re.finditer(r"https?://(?:t\.me|telegram\.me)/(?:s/)?([A-Za-z0-9_]{3,})(?:/|\b)", text, re.IGNORECASE):
+            add_handle_candidate(candidates, match.group(1), 30)
+        for match in re.finditer(r"@([A-Za-z0-9_]{3,})", text, re.IGNORECASE):
+            add_handle_candidate(candidates, match.group(1), 12)
+    return [item[1] for item in sorted(candidates.values(), key=lambda item: -item[0])]
+
+
+def search_handle_candidates_by_title(title):
+    if not title:
+        return []
+    query = urllib.parse.quote(f'"{title}" "t.me"')
+    urls = [
+        f"https://www.bing.com/search?q={query}",
+        f"https://r.jina.ai/http://r.jina.ai/http://www.bing.com/search?q={query}",
+    ]
+    candidates = {}
+    for url in urls:
+        try:
+            request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(request, timeout=8) as response:
+                text = response.read(512 * 1024).decode("utf-8", errors="ignore")
+        except Exception:
+            continue
+        decoded = html.unescape(text)
+        patterns = [
+            r"(?:https?://)?(?:t\.me|telegram\.me)/(?:s/)?([A-Za-z0-9_]{3,})",
+            r"tgstat\.com/channel/%40([A-Za-z0-9_]{3,})",
+            r"telemetr\.io/(?:en/)?channels/[^\"'<>\s]*-([A-Za-z0-9_]{3,})",
+        ]
+        for pattern in patterns:
+            for match in re.finditer(pattern, decoded, re.IGNORECASE):
+                add_handle_candidate(candidates, match.group(1), 20)
+    return [item[1] for item in sorted(candidates.values(), key=lambda item: -item[0])]
+
+
+def infer_handle_from_verified_title(title, message_files):
+    candidates = collect_handle_candidates(message_files)
+    candidates.extend(search_handle_candidates_by_title(title))
+    seen = set()
+    for handle in candidates[:24]:
+        clean = remap_telegram_channel(handle)
+        lowered = clean.lower()
+        if not clean or lowered in seen:
+            continue
+        seen.add(lowered)
+        remote_title = fetch_telegram_public_title(clean)
+        if titles_match(title, remote_title):
+            return clean
+    return ""
+
+
 def infer_handle_from_export(message_files):
     counts = {}
+    message_ids = set()
+    samples = []
     for path in message_files[:8]:
         if path.suffix.lower() not in {".html", ".htm"}:
             continue
         text = read_text_sample(path)
-        for match in re.finditer(r"https?://(?:t\.me|telegram\.me)/(?!s/)([A-Za-z0-9_]{3,})(?:/|\b)", text, re.IGNORECASE):
+        samples.append(text)
+        message_ids.update(re.findall(r'id=["\']message(\d+)["\']', text, re.IGNORECASE))
+    for text in samples:
+        for match in re.finditer(r"https?://(?:t\.me|telegram\.me)/(?:s/)?([A-Za-z0-9_]{3,})/(\d+)(?:[/?#][^\"'<\s]*)?", text, re.IGNORECASE):
             raw = match.group(1)
-            mapped = remap_telegram_channel(raw)
-            # Prefer channels that are already part of the app's redirect rules. Exported
-            # messages often contain many unrelated Telegram links in the message body.
-            if raw.lower() not in TELEGRAM_CHANNEL_REDIRECTS and mapped.lower() not in TELEGRAM_CHANNEL_REDIRECTS.values():
+            message_id = match.group(2)
+            if raw.lower().endswith("bot"):
                 continue
-            counts[mapped] = counts.get(mapped, 0) + 1
+            mapped = remap_telegram_channel(raw)
+            stat = counts.setdefault(mapped, {"count": 0, "matched": 0})
+            stat["count"] += 1
+            if message_id in message_ids:
+                stat["matched"] += 1
     if not counts:
         return ""
-    return sorted(counts.items(), key=lambda item: (-item[1], item[0]))[0][0]
+    ranked = sorted(counts.items(), key=lambda item: (-item[1]["matched"], -item[1]["count"], item[0].lower()))
+    best_handle, best = ranked[0]
+    second_matched = ranked[1][1]["matched"] if len(ranked) > 1 else 0
+    matched = best["matched"]
+    match_ratio = matched / max(1, best["count"])
+    dominant = matched >= max(8, second_matched * 4)
+    strong_match = matched >= 8 and match_ratio >= 0.6 and dominant
+    broad_coverage = len(message_ids) >= 50 and matched >= max(20, len(message_ids) // 50) and match_ratio >= 0.6 and dominant
+    if strong_match or broad_coverage:
+        return best_handle
+    return ""
 
 
-def build_archive_name(root, message_files):
+def build_archive_name(root, message_files, allow_remote=False):
     title = extract_chat_title(message_files) or root.name
-    handle = infer_handle_from_name(title) or infer_handle_from_paths(root)
+    title_handle = infer_handle_from_name(title)
+    export_handle = infer_handle_from_export(message_files)
+    verified_handle = infer_handle_from_verified_title(title, message_files) if allow_remote and not (title_handle or export_handle) else ""
+    path_handle = "" if is_under_archive_root(root) else infer_handle_from_paths(root)
+    handle = title_handle or export_handle or verified_handle or path_handle
     label = normalize_space(title)
     if handle:
         suffix = f"@{handle}"
@@ -255,22 +417,44 @@ def build_archive_name(root, message_files):
 def list_archived_imports():
     if not ARCHIVE_ROOT.exists():
         return []
-    items = []
+    items_by_key = {}
     for path in ARCHIVE_ROOT.iterdir():
         if not path.is_dir():
             continue
         name = path.name
-        handle_match = re.search(r"@([A-Za-z0-9_]{3,})", name)
+        label = name
+        handle = ""
+        message_files = sorted(
+            [p for p in path.glob("messages*.htm*") if p.is_file() and p.stat().st_size > 0],
+            key=lambda p: p.name.lower(),
+        )
+        if message_files:
+            _archive_name, label, handle = build_archive_name(path, message_files, allow_remote=False)
+        else:
+            handle_match = re.search(r"@([A-Za-z0-9_]{3,})", name)
+            handle = handle_match.group(1) if handle_match else ""
         try:
             mtime = path.stat().st_mtime
         except OSError:
             mtime = 0
-        items.append({
-            "label": name,
+        item = {
+            "label": label,
             "path": str(path),
-            "handle": handle_match.group(1) if handle_match else "",
+            "handle": handle,
             "updated": mtime,
-        })
+        }
+        key = (label.lower(), handle.lower())
+        current = items_by_key.get(key)
+        handle_suffix = f"@{handle}".lower() if handle else ""
+        item_score = (1 if handle_suffix and handle_suffix in path.name.lower() else 0, mtime)
+        current_path = Path(current["path"]) if current else None
+        current_score = (
+            1 if current and handle_suffix and handle_suffix in current_path.name.lower() else 0,
+            current["updated"] if current else 0,
+        )
+        if not current or item_score > current_score:
+            items_by_key[key] = item
+    items = list(items_by_key.values())
     items.sort(key=lambda item: (-item["updated"], item["label"].lower()))
     return items
 
@@ -337,7 +521,7 @@ def copy_tree_incremental(source, destination):
 
 
 def organize_export_root(root, message_files):
-    archive_name, display_name, handle = build_archive_name(root, message_files)
+    archive_name, display_name, handle = build_archive_name(root, message_files, allow_remote=True)
     archive_root = ARCHIVE_ROOT
     destination = archive_root / archive_name
     try:
