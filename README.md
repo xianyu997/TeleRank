@@ -1,23 +1,31 @@
 # TeleRank
 
-Stop scrolling through thousands of Telegram messages.
+**Turn massive Telegram channels into reaction-ranked archives. Find the best content in minutes, not hours.**
 
-TeleRank automatically downloads Telegram channel history, analyzes community reactions, and ranks content so you can instantly find the highest-quality posts.
+TeleRank downloads channel history through a Telegram Bot, analyzes community reactions, and ranks posts so you instantly discover the highest-quality content — curated by real people, not algorithms.
+
+## How It Works
+
+```
+📎 Send channel link to Bot  →  ⚡ Auto-download (images + text)  →  😊 Rank by reactions  →  🎬 Browse in TikTok-style gallery
+```
 
 ## Features
 
-- 🚀 One-click Telegram Bot import
-- ⚡ Fast download (images + text only, no videos)
-- 😊 Reaction-based ranking
-- 📈 Community popularity sorting
-- 🖼 Full-screen TikTok-style gallery
+- 🚀 One-click Telegram Bot import — just send a channel link
+- ⚡ Fast local archive — images, stickers, and text, no video bloat
+- 😊 Reaction-based ranking — community curates the content
+- 🎬 Full-screen gallery — swipe through top posts like TikTok
 - 🔍 Emoji filter & matrix grid view
-- 📂 Local archive
-- 📱 LAN access for mobile viewing
+- 📱 LAN access — browse on your phone from anywhere at home
+- 🔒 All data stored locally — nothing in the cloud
 
-## Setup
+## Get Started
+
+[![Download DMG](https://img.shields.io/badge/Download-DMG-blue)](https://github.com/xianyu997/TeleRank/releases/latest)
 
 ```bash
+# Or build from source
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
@@ -26,10 +34,13 @@ bash scripts/build_mac_dmg.sh
 
 ## Config
 
-1. Get Telegram API credentials from https://my.telegram.org
-2. Configure via the app's Settings panel
-3. Optionally set up a bot token for auto-import
+1. Get Telegram API credentials from [my.telegram.org](https://my.telegram.org)
+2. Open the app → Settings → enter API ID and Hash
+3. Create a Bot via [@BotFather](https://t.me/BotFather) and paste the token
+4. Send a channel link to your bot → auto-download begins
 
-## Download
+## Why TeleRank?
 
-Get the latest DMG from [Releases](https://github.com/xianyu997/TeleRank/releases).
+Telegram channels have thousands of posts. But the community has already done the curation — every reaction is a vote. TeleRank extracts that collective signal and shows you what matters.
+
+**Stop scrolling. Start ranking.**
