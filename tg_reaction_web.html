@@ -1,0 +1,4551 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TG Reaction Ranker</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --panel: #fff;
+      --ink: #172033;
+      --muted: #65758b;
+      --line: #dbe4ef;
+      --brand: #2383c4;
+      --brand2: #1d6ea6;
+      --soft: #eef5fb;
+      --warn: #a95709;
+      --shadow: 0 18px 48px rgba(24, 38, 56, .10);
+      --shadow-soft: 0 10px 28px rgba(24, 38, 56, .08);
+      --shadow-lift: 0 22px 54px rgba(24, 38, 56, .16);
+      --glass-panel: rgba(255,255,255,.74);
+      --glass-panel-strong: rgba(255,255,255,.86);
+      --glass-border: rgba(255,255,255,.58);
+      --glass-highlight: rgba(255,255,255,.72);
+      --glass-blur: blur(22px) saturate(1.18);
+      --ease-out: cubic-bezier(.2,.8,.2,1);
+      --ease-pop: cubic-bezier(.16,1,.3,1);
+      --motion-fast: 140ms;
+      --motion: 240ms;
+      color-scheme: light;
+      --topbar-bg: rgba(255,255,255,.94);
+      --topbar-shadow: 0 8px 28px rgba(24,38,56,.06);
+      --mark-text: #fff;
+      --button-text: #fff;
+      --button-secondary-bg: #eef5fb;
+      --button-secondary-hover: #e4edf6;
+      --button-disabled-bg: #e8eef5;
+      --button-disabled-text: #77869a;
+      --button-shadow: 0 8px 18px rgba(35,131,196,.18);
+      --button-secondary-shadow: 0 6px 16px rgba(24,38,56,.06);
+      --note-bg: #fbfdff;
+      --drop-bg: #f9fcff;
+      --drop-border: #9bb2c8;
+      --drop-active-bg: #eaf6ff;
+      --focus-ring: rgba(35,131,196,.16);
+      --status-bg: #edf7ff;
+      --status-text: #174768;
+      --status-warn-bg: #fff6ec;
+      --status-warn-text: #724007;
+      --chip-bg: #fff;
+      --chip-active-bg: #eaf6ff;
+      --chip-active-text: #125d90;
+      --metric-bg: #fbfdff;
+      --rx-bg: #eef3f8;
+      --danger-text: #b42318;
+      --danger-bg: #fff1f0;
+      --favorite-border: #f59e0b;
+      --favorite-text: #b45309;
+      --favorite-bg: #fffbeb;
+      --modal-backdrop: rgba(0,0,0,.58);
+      --placeholder: #8494a8;
+      --viewer-bg: #fff;
+      --viewer-panel: rgba(255,255,255,.92);
+      --viewer-text: #172033;
+      --viewer-muted: #65758b;
+      --viewer-border: #dbe4ef;
+      --viewer-toggle-bg: rgba(255,255,255,.92);
+      --viewer-toggle-text: #111827;
+      --viewer-toggle-border: rgba(0,0,0,.12);
+      --media-bg: #fff;
+      --media-panel-bg: #fff;
+      --media-text: #172033;
+      --media-muted: #4a5568;
+      --media-button-bg: var(--brand);
+      --media-button-text: #fff;
+      --media-button-border: transparent;
+      --media-nav-bg: rgba(0,0,0,.08);
+      --media-nav-hover: rgba(0,0,0,.14);
+      --media-thumb-bg: rgba(0,0,0,.12);
+      --media-thumb-active: var(--brand);
+      --media-rank-bg: rgba(255,255,255,.88);
+      --media-dot-bg: rgba(0,0,0,.14);
+      --media-dot-active: var(--brand);
+      --media-shadow: 0 18px 50px rgba(24,38,56,.10);
+      --lightbox-backdrop: rgba(0,0,0,.88);
+      --matrix-card-bg: #fff;
+      --matrix-card-border: #dbe4ef;
+      --matrix-loader-text: #65758b;
+      --field-bg: #fff;
+      --field-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+    }
+    [data-theme="dark"] {
+      --bg: #05070b;
+      --panel: #101722;
+      --ink: #eef5ff;
+      --muted: #9aa8ba;
+      --line: #253142;
+      --brand: #38bdf8;
+      --brand2: #7dd3fc;
+      --soft: #182434;
+      --warn: #f59e0b;
+      --shadow: 0 18px 48px rgba(0, 0, 0, .34);
+      --shadow-soft: 0 10px 28px rgba(0, 0, 0, .24);
+      --shadow-lift: 0 24px 58px rgba(0, 0, 0, .48);
+      --glass-panel: rgba(16,23,34,.72);
+      --glass-panel-strong: rgba(16,23,34,.88);
+      --glass-border: rgba(255,255,255,.10);
+      --glass-highlight: rgba(255,255,255,.08);
+      --glass-blur: blur(24px) saturate(1.12);
+      color-scheme: dark;
+      --topbar-bg: rgba(16,23,34,.94);
+      --topbar-shadow: 0 10px 30px rgba(0,0,0,.22);
+      --mark-text: #fff;
+      --button-text: #06111f;
+      --button-secondary-bg: #182434;
+      --button-secondary-hover: #223146;
+      --button-disabled-bg: #111827;
+      --button-disabled-text: #64748b;
+      --button-shadow: 0 10px 22px rgba(56,189,248,.16);
+      --button-secondary-shadow: 0 8px 20px rgba(0,0,0,.18);
+      --note-bg: #0b1220;
+      --drop-bg: #0b1220;
+      --drop-border: #3b4b61;
+      --drop-active-bg: #11263a;
+      --focus-ring: rgba(56,189,248,.22);
+      --status-bg: #082f49;
+      --status-text: #d8f3ff;
+      --status-warn-bg: #3a2508;
+      --status-warn-text: #ffe2b8;
+      --chip-bg: #0b1220;
+      --chip-active-bg: #10344d;
+      --chip-active-text: #e5f7ff;
+      --metric-bg: #0b1220;
+      --rx-bg: #182434;
+      --danger-text: #fca5a5;
+      --danger-bg: #2a1114;
+      --favorite-border: #fbbf24;
+      --favorite-text: #fbbf24;
+      --favorite-bg: #2a1f09;
+      --modal-backdrop: rgba(0,0,0,.72);
+      --placeholder: #748398;
+      --viewer-bg: #05070b;
+      --viewer-panel: rgba(0,0,0,.42);
+      --viewer-text: #fff;
+      --viewer-muted: rgba(255,255,255,.72);
+      --viewer-border: rgba(255,255,255,.18);
+      --viewer-toggle-bg: rgba(238,245,255,.94);
+      --viewer-toggle-text: #07111f;
+      --viewer-toggle-border: rgba(255,255,255,.26);
+      --media-bg: #05070b;
+      --media-panel-bg: #020617;
+      --media-text: #fff;
+      --media-muted: rgba(255,255,255,.74);
+      --media-button-bg: rgba(238,245,255,.94);
+      --media-button-text: #07111f;
+      --media-button-border: rgba(255,255,255,.18);
+      --media-nav-bg: rgba(255,255,255,.14);
+      --media-nav-hover: rgba(255,255,255,.24);
+      --media-thumb-bg: rgba(255,255,255,.48);
+      --media-thumb-active: #fff;
+      --media-rank-bg: rgba(0,0,0,.48);
+      --media-dot-bg: rgba(255,255,255,.28);
+      --media-dot-active: rgba(255,255,255,.94);
+      --media-shadow: 0 18px 50px rgba(0,0,0,.38);
+      --lightbox-backdrop: rgba(0,0,0,.9);
+      --matrix-card-bg: #05070b;
+      --matrix-card-border: rgba(255,255,255,.14);
+      --matrix-loader-text: rgba(255,255,255,.72);
+      --field-bg: #0b1220;
+      --field-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    [data-theme="light"] {
+      color-scheme: light;
+      --topbar-bg: rgba(255,255,255,.94);
+      --topbar-shadow: 0 8px 28px rgba(24,38,56,.06);
+      --mark-text: #fff;
+      --button-text: #fff;
+      --button-secondary-bg: #eef5fb;
+      --button-secondary-hover: #e4edf6;
+      --button-disabled-bg: #e8eef5;
+      --button-disabled-text: #77869a;
+      --button-shadow: 0 8px 18px rgba(35,131,196,.18);
+      --button-secondary-shadow: 0 6px 16px rgba(24,38,56,.06);
+      --note-bg: #fbfdff;
+      --drop-bg: #f9fcff;
+      --drop-border: #9bb2c8;
+      --drop-active-bg: #eaf6ff;
+      --focus-ring: rgba(35,131,196,.16);
+      --status-bg: #edf7ff;
+      --status-text: #174768;
+      --status-warn-bg: #fff6ec;
+      --status-warn-text: #724007;
+      --chip-bg: #fff;
+      --chip-active-bg: #eaf6ff;
+      --chip-active-text: #125d90;
+      --metric-bg: #fbfdff;
+      --rx-bg: #eef3f8;
+      --danger-text: #b42318;
+      --danger-bg: #fff1f0;
+      --favorite-border: #f59e0b;
+      --favorite-text: #b45309;
+      --favorite-bg: #fffbeb;
+      --modal-backdrop: rgba(0,0,0,.58);
+      --placeholder: #8494a8;
+      --viewer-bg: #fff;
+      --viewer-panel: rgba(255,255,255,.92);
+      --viewer-text: #172033;
+      --viewer-muted: #65758b;
+      --viewer-border: #dbe4ef;
+      --viewer-toggle-bg: rgba(255,255,255,.92);
+      --viewer-toggle-text: #111827;
+      --viewer-toggle-border: rgba(0,0,0,.12);
+      --media-bg: #fff;
+      --media-panel-bg: #fff;
+      --media-text: #172033;
+      --media-muted: #4a5568;
+      --media-button-bg: var(--brand);
+      --media-button-text: #fff;
+      --media-button-border: transparent;
+      --media-nav-bg: rgba(0,0,0,.08);
+      --media-nav-hover: rgba(0,0,0,.14);
+      --media-thumb-bg: rgba(0,0,0,.12);
+      --media-thumb-active: var(--brand);
+      --media-rank-bg: rgba(255,255,255,.88);
+      --media-dot-bg: rgba(0,0,0,.14);
+      --media-dot-active: var(--brand);
+      --media-shadow: 0 18px 50px rgba(24,38,56,.10);
+      --lightbox-backdrop: rgba(0,0,0,.88);
+      --matrix-card-bg: #fff;
+      --matrix-card-border: #dbe4ef;
+      --matrix-loader-text: #65758b;
+      --field-bg: #fff;
+      --field-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+    }
+
+    * { box-sizing: border-box; }
+    html {
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font: 14px/1.5 "Segoe UI", "Microsoft YaHei UI", Arial, sans-serif;
+      height: 100dvh;
+      width: 100%;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+      max-width: 100vw;
+      transition: color var(--motion) var(--ease-out), background var(--motion) var(--ease-out);
+    }
+    button, input, select { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    input::placeholder { color: var(--placeholder); opacity: 1; }
+    ::selection { background: color-mix(in srgb, var(--brand) 26%, transparent); }
+
+    .topbar {
+      position: relative;
+      top: 0;
+      z-index: 5;
+      background: var(--topbar-bg);
+      border-bottom: 1px solid var(--line);
+      box-shadow: var(--topbar-shadow);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      transition: background var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out), box-shadow var(--motion) var(--ease-out);
+    }
+    .topbar-inner {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .brand > div:last-child { min-width: 0; }
+    .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #38bdf8, #1d6ea6);
+      color: var(--mark-text);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      box-shadow: 0 10px 24px rgba(29,110,166,.22);
+    }
+    h1 { margin: 0; font-size: 18px; line-height: 1.15; }
+    .subtitle { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+    .lang-select {
+      width: auto;
+      min-width: 116px;
+      min-height: 36px;
+      border-radius: 7px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .btn {
+      min-height: 36px;
+      padding: 8px 12px;
+      border-radius: 7px;
+      background: var(--brand);
+      color: var(--button-text);
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+      box-shadow: var(--button-shadow);
+      transition:
+        transform var(--motion-fast) var(--ease-pop),
+        background var(--motion) var(--ease-out),
+        color var(--motion) var(--ease-out),
+        border-color var(--motion) var(--ease-out),
+        box-shadow var(--motion) var(--ease-out),
+        opacity var(--motion) var(--ease-out);
+    }
+    .btn:hover { background: var(--brand2); transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+    .btn:active { transform: translateY(0) scale(.985); }
+    .btn.secondary { background: var(--button-secondary-bg); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--button-secondary-shadow); }
+    .btn.secondary:hover { background: var(--button-secondary-hover); }
+    .btn:disabled {
+      opacity: 1;
+      cursor: not-allowed;
+      background: var(--button-disabled-bg);
+      color: var(--button-disabled-text);
+      border-color: var(--line);
+      box-shadow: none;
+      transform: none;
+    }
+    .hidden-input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+    .modal[hidden] { display: none; }
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: var(--modal-backdrop);
+    }
+    .modal-panel {
+      position: relative;
+      width: min(520px, 100%);
+      max-height: calc(100dvh - 36px);
+      overflow: auto;
+      overscroll-behavior: contain;
+      background: var(--panel);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      animation: panelIn var(--motion) var(--ease-pop);
+    }
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .modal-title {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.2;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .modal-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    main {
+      width: 100%;
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 16px 18px 28px;
+      min-height: 0;
+    }
+    .page[hidden] { display: none; }
+    .page-enter { animation: pageIn var(--motion) var(--ease-pop); }
+    .viewer-layout {
+      position: relative;
+      display: grid;
+      grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+      max-width: none;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--viewer-bg);
+    }
+    .import-layout {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 14px;
+      height: 100%;
+      overflow: hidden;
+    }
+    .import-tools {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+    .import-channels {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      max-width: 100%;
+    }
+    .panel {
+      background: var(--glass-panel);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      transition:
+        background var(--motion) var(--ease-out),
+        border-color var(--motion) var(--ease-out),
+        box-shadow var(--motion) var(--ease-out),
+        transform var(--motion-fast) var(--ease-pop);
+    }
+    .side { position: sticky; top: 80px; overflow: hidden; }
+    .viewer-controls {
+      position: absolute;
+      top: 15px;
+      left: 18px;
+      z-index: 20;
+      width: 320px;
+      max-height: calc(100% - 30px);
+      overflow: auto;
+      transform: translateX(-350px);
+      opacity: .98;
+      transition: transform 260ms var(--ease-pop), opacity var(--motion) var(--ease-out), background var(--motion) var(--ease-out);
+      padding-top: 36px;
+      color: var(--ink);
+      background: var(--glass-panel-strong);
+    }
+    .viewer-controls.open { transform: translateX(0); }
+    .viewer-toggle {
+      position: absolute;
+      top: 15px;
+      left: 18px;
+      z-index: 21;
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      background: var(--viewer-toggle-bg);
+      color: var(--viewer-toggle-text);
+      border: 1px solid var(--viewer-toggle-border);
+      box-shadow: 0 12px 30px rgba(0,0,0,.28);
+      font-weight: 900;
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      transition: transform var(--motion-fast) var(--ease-pop), background var(--motion) var(--ease-out), color var(--motion) var(--ease-out), box-shadow var(--motion) var(--ease-out);
+    }
+    .viewer-toggle:hover { transform: translateY(-1px) scale(1.025); }
+    .viewer-toggle:active { transform: scale(.96); }
+    .path-import {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: end;
+    }
+    .telegram-quick-import {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: end;
+      padding: 12px;
+      border: 1px solid color-mix(in srgb, var(--brand) 38%, var(--line));
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--soft) 72%, transparent);
+    }
+    .telegram-quick-import .field { margin: 0; }
+    .telegram-progress {
+      display: grid;
+      gap: 7px;
+      padding: 12px;
+      border: 1px solid color-mix(in srgb, var(--brand) 38%, var(--line));
+      border-radius: 9px;
+      background: var(--status-bg);
+      color: var(--status-text);
+    }
+    .telegram-progress[hidden] { display: none; }
+    .telegram-progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .telegram-progress-head span, .telegram-progress-detail { color: var(--muted); font-size: 12px; }
+    .telegram-progress progress { width: 100%; height: 10px; accent-color: var(--brand); }
+    .path-import .field {
+      margin-top: 0;
+    }
+    #pathInput {
+      resize: vertical;
+      min-height: 38px;
+      max-height: 120px;
+      line-height: 1.4;
+    }
+    .import-panel {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+    .import-status {
+      margin-top: 0;
+    }
+    .import-note {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      color: var(--muted);
+      background: var(--note-bg);
+      transition: background var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out), color var(--motion) var(--ease-out);
+    }
+    .history-item.fav {
+      border-color: var(--favorite-border);
+      background: var(--favorite-bg);
+    }
+    .history-item .import-note {
+      margin-top: 4px;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11px;
+    }
+    [data-theme="dark"] .history-item .import-note { background: transparent; }
+    [data-theme="dark"] .history-handle-link:hover {
+      background: var(--brand);
+      color: #06111f;
+      border-color: var(--brand);
+    }
+    [data-theme="dark"] .history-handle-missing {
+      border-color: rgba(255,255,255,.12);
+    }
+    .history-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(370px, 1fr));
+      gap: 8px;
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      overscroll-behavior-x: none;
+      scrollbar-gutter: stable;
+      padding: 2px;
+      min-width: 0;
+      align-content: start;
+    }
+    .history-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .history-head .section-title { margin: 0; white-space: nowrap; }
+    .history-stats {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--rx-bg);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-weight: 700;
+    }
+    .channel-search {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .channel-search .input {
+      flex: 1;
+      min-height: 32px;
+      padding: 4px 10px;
+      font-size: 13px;
+    }
+    .history-item {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px;
+      background: var(--field-bg);
+      box-shadow: var(--field-shadow);
+      transition: transform var(--motion-fast) var(--ease-pop), background var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out), box-shadow var(--motion) var(--ease-out);
+    }
+    .history-item:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+    .history-item.dragging {
+      opacity: .55;
+    }
+    .history-item.drag-over {
+      outline: 2px solid var(--brand);
+      background: var(--soft);
+    }
+    .history-index {
+      width: 34px;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 12px;
+      background: var(--panel);
+      transition: background var(--motion) var(--ease-out), color var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out);
+    }
+    .history-main { min-width: 0; display: grid; gap: 4px; }
+    .history-title-row { min-width: 0; display: flex; align-items: center; gap: 7px; }
+    .history-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--ink);
+      font-weight: 800;
+      font-size: 14px;
+      line-height: 1.3;
+    }
+    .history-star {
+      flex: 0 0 auto;
+      color: var(--favorite-border);
+      font-size: 15px;
+      line-height: 1;
+    }
+    .history-handle-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      width: fit-content;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      padding: 2px 9px;
+      border: 1px solid color-mix(in srgb, var(--brand) 32%, var(--line));
+      border-radius: 999px;
+      color: var(--brand);
+      background: var(--soft);
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-pop);
+    }
+    .history-handle-link:hover {
+      background: var(--brand);
+      color: #fff;
+      border-color: var(--brand);
+      transform: translateY(-1px);
+    }
+    .history-handle-icon {
+      font-size: 11px;
+      opacity: .7;
+      flex: 0 0 auto;
+    }
+    .history-handle-missing {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      width: fit-content;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      padding: 2px 9px;
+      border: 1px dashed var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .history-location { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+    .history-tools {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .history-mini {
+      width: 32px;
+      min-height: 32px;
+      padding: 0;
+      border-radius: 8px;
+      display: inline-grid;
+      place-items: center;
+      font-size: 14px;
+      line-height: 1;
+      transition: transform var(--motion-fast) var(--ease-pop), background var(--motion) var(--ease-out), color var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out);
+    }
+    .history-mini:hover { transform: translateY(-1px); }
+    .history-mini:active { transform: scale(.94); }
+    .history-drag {
+      cursor: grab;
+      user-select: none;
+    }
+    .history-drag:active {
+      cursor: grabbing;
+    }
+    .btn.secondary.history-danger {
+      color: var(--danger-text);
+    }
+    .btn.secondary.history-danger:hover {
+      background: var(--danger-bg);
+      color: var(--danger-text);
+    }
+    .history-mini.active {
+      border-color: var(--favorite-border);
+      color: var(--favorite-text);
+      background: var(--favorite-bg);
+    }
+    .virtual-spacer {
+      width: 1px;
+      pointer-events: none;
+      scroll-snap-align: none;
+    }
+    .history-path {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .section { padding: 14px; border-bottom: 1px solid var(--line); }
+    .section:last-child { border-bottom: 0; }
+    .section-title { margin: 0 0 10px; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .drop {
+      min-height: 132px;
+      border: 1px dashed var(--drop-border);
+      border-radius: 8px;
+      background: var(--drop-bg);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 16px;
+      box-shadow: var(--field-shadow);
+      transition: background var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out), transform var(--motion-fast) var(--ease-pop), box-shadow var(--motion) var(--ease-out);
+    }
+    .drop.drag { border-color: var(--brand); background: var(--drop-active-bg); }
+    .drop:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+    .drop strong { display: block; font-size: 15px; margin-bottom: 5px; }
+    .drop span { color: var(--muted); }
+    .field { display: grid; gap: 5px; margin-top: 10px; }
+    .field label { color: var(--muted); font-weight: 700; font-size: 12px; }
+    .input, .select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px 10px;
+      background: var(--field-bg);
+      color: var(--ink);
+      outline: none;
+      box-shadow: var(--field-shadow);
+      transition:
+        background var(--motion) var(--ease-out),
+        color var(--motion) var(--ease-out),
+        border-color var(--motion) var(--ease-out),
+        box-shadow var(--motion) var(--ease-out);
+    }
+    .input, .select {
+      background: var(--field-bg);
+      color: var(--ink);
+    }
+    .select option {
+      background: var(--panel);
+      color: var(--ink);
+    }
+    .input:focus, .select:focus { border-color: var(--brand); box-shadow: var(--field-shadow), 0 0 0 3px var(--focus-ring); }
+    .check { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; user-select: none; }
+    .check input { margin-top: 3px; accent-color: var(--brand); }
+    .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .metric { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--metric-bg); min-height: 72px; }
+    .metric { transition: background var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out), transform var(--motion-fast) var(--ease-pop); }
+    .metric:hover { transform: translateY(-1px); }
+    .metric strong { display: block; font-size: 22px; line-height: 1.1; }
+    .metric span { color: var(--muted); font-size: 12px; }
+    .emoji-list { max-height: 230px; overflow: auto; display: flex; flex-wrap: wrap; gap: 7px; padding-right: 2px; }
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--chip-bg);
+      min-height: 31px;
+      padding: 5px 9px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--ink);
+      transition: transform var(--motion-fast) var(--ease-pop), background var(--motion) var(--ease-out), color var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out), box-shadow var(--motion) var(--ease-out);
+    }
+    .chip.active { border-color: var(--brand); background: var(--chip-active-bg); color: var(--chip-active-text); }
+    .chip small { color: var(--muted); }
+    .chip:hover { transform: translateY(-1px); box-shadow: var(--button-secondary-shadow); }
+    .chip:active { transform: scale(.97); }
+    .content { display: grid; gap: 12px; min-width: 0; }
+    .status {
+      border-left: 4px solid var(--brand);
+      background: var(--status-bg);
+      color: var(--status-text);
+      border-radius: 7px;
+      padding: 10px 12px;
+      box-shadow: var(--shadow-soft);
+      transition: background var(--motion) var(--ease-out), color var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out);
+    }
+    .status.warn { border-left-color: var(--warn); background: var(--status-warn-bg); color: var(--status-warn-text); }
+    .toolbar {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) 160px 130px 120px;
+      gap: 10px;
+      align-items: end;
+    }
+    .gallery-wrap {
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+      background: var(--viewer-bg);
+    }
+    .gallery {
+      height: 100%;
+      overflow-y: scroll;
+      overflow-x: hidden;
+      padding: 0;
+      display: block;
+      scroll-snap-type: y mandatory;
+      scroll-behavior: smooth;
+      overscroll-behavior-y: none;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .gallery::-webkit-scrollbar { width: 0; height: 0; }
+    .reel {
+      scroll-snap-align: start;
+      scroll-snap-stop: normal;
+      overflow: hidden;
+      margin: 0;
+      position: relative;
+    }
+    .viewer-content {
+      grid-area: 1 / 1;
+      display: block;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+    }
+    .matrix-layout {
+      max-width: none;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--viewer-bg);
+    }
+    .matrix-gallery {
+      height: 100%;
+      overflow: auto;
+      scrollbar-width: none;
+      padding: clamp(8px, 1.2vmin, 14px);
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--viewer-bg) 88%, transparent), var(--viewer-bg));
+    }
+    .matrix-gallery::-webkit-scrollbar { width: 0; height: 0; }
+    .matrix-grid {
+      column-width: clamp(150px, 18vw, 280px);
+      column-gap: clamp(8px, 1.1vmin, 14px);
+      padding-bottom: clamp(8px, 1.2vmin, 14px);
+    }
+    .matrix-loader {
+      display: grid;
+      place-items: center;
+      min-height: 96px;
+      color: var(--matrix-loader-text);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .matrix-card {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+      aspect-ratio: var(--matrix-aspect, 1);
+      margin: 0 0 clamp(8px, 1.1vmin, 14px);
+      break-inside: avoid;
+      overflow: hidden;
+      border: 1px solid var(--matrix-card-border);
+      border-radius: 8px;
+      background: var(--matrix-card-bg);
+      min-width: 0;
+      min-height: 128px;
+      max-height: 78vh;
+      padding: 0;
+      color: var(--media-text);
+      text-align: left;
+      box-shadow: 0 18px 34px rgba(0,0,0,.24);
+      transition:
+        transform var(--motion) var(--ease-pop),
+        box-shadow var(--motion) var(--ease-out),
+        border-color var(--motion) var(--ease-out),
+        filter var(--motion) var(--ease-out);
+    }
+    .matrix-card:hover,
+    .matrix-card:focus-within {
+      transform: translateY(-3px) scale(1.006);
+      box-shadow: var(--shadow-lift);
+      border-color: color-mix(in srgb, var(--brand) 34%, var(--matrix-card-border));
+      filter: saturate(1.04);
+    }
+    .matrix-media {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      cursor: zoom-in;
+    }
+    .matrix-card img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .matrix-bg {
+      object-fit: cover;
+      filter: blur(22px) saturate(1.18);
+      transform: scale(1.12);
+      opacity: .42;
+      transition: opacity var(--motion) var(--ease-out), filter var(--motion) var(--ease-out);
+    }
+    .matrix-img {
+      object-fit: contain;
+      z-index: 1;
+      transition: transform var(--motion) var(--ease-pop), filter var(--motion) var(--ease-out);
+    }
+    .matrix-card:hover .matrix-bg { opacity: .52; }
+    .matrix-card:hover .matrix-img { transform: scale(1.012); }
+    .matrix-card::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 54%;
+      background: linear-gradient(0deg, rgba(0,0,0,.72), rgba(0,0,0,0));
+      pointer-events: none;
+    }
+    .matrix-info {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      z-index: 2;
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+    .matrix-line {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: clamp(10px, 1.1vmin, 12px);
+      font-weight: 800;
+      text-shadow: 0 2px 8px rgba(0,0,0,.5);
+    }
+    .matrix-meta {
+      color: var(--media-muted);
+      font-size: clamp(9px, 1vmin, 11px);
+      font-weight: 700;
+    }
+    .matrix-jump {
+      margin-top: 6px;
+      width: fit-content;
+      max-width: 100%;
+      min-height: 28px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--media-button-border);
+      background: var(--media-button-bg);
+      color: var(--media-button-text);
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,0,0,.18);
+      transition: transform var(--motion-fast) var(--ease-pop), background var(--motion) var(--ease-out), color var(--motion) var(--ease-out), box-shadow var(--motion) var(--ease-out);
+    }
+    .matrix-jump:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(0,0,0,.24); }
+    .matrix-jump:active { transform: scale(.97); }
+    .matrix-jump:disabled,
+    .source-link:disabled {
+      cursor: not-allowed;
+      background: var(--viewer-panel);
+      color: var(--viewer-muted);
+      border-color: var(--viewer-border);
+      box-shadow: none;
+    }
+    .reel {
+      position: relative;
+      height: 100%;
+      min-height: 100%;
+      width: 100%;
+      max-width: 1320px;
+      margin: 0 auto;
+      background: var(--viewer-bg);
+      overflow: hidden;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: grid;
+      place-items: center;
+      padding: clamp(12px, 2vmin, 24px);
+    }
+    .lightbox[hidden] { display: none; }
+    .lightbox-backdrop {
+      position: absolute;
+      inset: 0;
+      background: var(--lightbox-backdrop);
+      backdrop-filter: blur(10px);
+      cursor: zoom-out;
+    }
+    .lightbox-img {
+      position: relative;
+      z-index: 1;
+      max-width: min(96vw, 1400px);
+      max-height: 94vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 28px 80px rgba(0,0,0,.5);
+      animation: imageIn var(--motion) var(--ease-pop);
+    }
+    .reel-media {
+      position: absolute;
+      inset: 0;
+      background: var(--media-bg);
+    }
+    .media-board {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      padding: clamp(8px, 1.6vmin, 18px) 92px clamp(126px, 23vh, 190px) clamp(8px, 1.6vmin, 18px);
+      min-width: 0;
+      min-height: 0;
+    }
+    .main-panel {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--media-panel-bg);
+      box-shadow: var(--media-shadow);
+      border: 1px solid var(--viewer-border);
+      transition: border-color var(--motion) var(--ease-out), box-shadow var(--motion) var(--ease-out), background var(--motion) var(--ease-out);
+    }
+    .reel-carousel {
+      position: relative;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+      touch-action: pan-x;
+      width: 100%;
+      height: 100%;
+    }
+    .reel-carousel::-webkit-scrollbar { width: 0; height: 0; }
+    .reel-slide {
+      position: relative;
+      flex: 0 0 100%;
+      width: 100%;
+      height: 100%;
+      scroll-snap-align: center;
+      overflow: hidden;
+      background: var(--media-bg);
+      display: grid;
+      place-items: center;
+      border: 0;
+      padding: 0;
+      color: inherit;
+      cursor: zoom-in;
+    }
+    .slide-bg {
+      position: absolute;
+      inset: -18px;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: blur(24px) saturate(.75);
+      opacity: .38;
+      transform: scale(1.12);
+    }
+    .slide-img {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      max-width: 100%;
+      max-height: 100%;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      box-sizing: border-box;
+      opacity: 0;
+      transition: opacity 200ms ease-out, transform 340ms var(--ease-pop), filter var(--motion) var(--ease-out), padding var(--motion) var(--ease-out);
+    }
+    .slide-img[src] { opacity: 1; }
+    .slide-bg {
+      position: absolute;
+      inset: -18px;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: blur(24px) saturate(.75);
+      opacity: 0;
+      transform: scale(1.12);
+      transition: opacity 300ms ease-out;
+    }
+    .slide-bg[src] { opacity: .38; }
+    .reel-slide[data-fit="cover"] .slide-bg {
+      opacity: .18;
+      filter: blur(18px) saturate(.82);
+    }
+    .reel-slide[data-fit="crop"] .slide-bg {
+      opacity: .28;
+      filter: blur(22px) saturate(.82);
+    }
+    .reel-slide[data-fit="contain"] .slide-bg {
+      opacity: .46;
+      filter: blur(28px) saturate(.78);
+    }
+    .thumb-strip {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(98px, 17vh, 142px);
+      transform: translateX(-50%);
+      z-index: 8;
+      max-width: min(72vw, 520px);
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 7px 9px;
+      border-radius: 999px;
+      background: var(--media-nav-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      scrollbar-width: none;
+      box-shadow: 0 10px 26px rgba(0,0,0,.20);
+    }
+    .thumb-strip::-webkit-scrollbar { width: 0; height: 0; }
+    .media-thumb {
+      position: relative;
+      flex: 0 0 auto;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      padding: 0;
+      border: 0;
+      background: var(--media-thumb-bg);
+      box-shadow: 0 1px 8px rgba(0,0,0,.28);
+      transition: width 180ms ease, background 180ms ease, opacity 180ms ease;
+      opacity: .82;
+    }
+    .media-thumb.active {
+      width: 26px;
+      background: var(--media-thumb-active);
+      opacity: 1;
+    }
+    .reel-no-media {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--media-muted);
+      padding: 30px;
+      background: var(--media-bg);
+    }
+    .reel-no-media strong {
+      display: block;
+      color: var(--media-text);
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    .reel-gradient {
+      position: absolute;
+      inset: auto 0 0;
+      height: min(45%, 260px);
+      z-index: 4;
+      background: linear-gradient(180deg, transparent, rgba(0,0,0,.82));
+      pointer-events: none;
+    }
+    .reel-overlay {
+      position: absolute;
+      left: 18px;
+      right: 88px;
+      bottom: clamp(12px, 2.2vmin, 22px);
+      z-index: 5;
+      color: var(--media-text);
+    }
+    .reel-rank {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--media-rank-bg);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+    .reel-sender {
+      font-size: 17px;
+      font-weight: 900;
+      margin-bottom: 5px;
+      text-shadow: 0 2px 12px rgba(0,0,0,.55);
+    }
+    .reel-meta {
+      color: var(--media-muted);
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    .reel-msg {
+      max-height: min(96px, 18vh);
+      overflow: hidden;
+      white-space: pre-wrap;
+      word-break: break-word;
+      text-shadow: 0 2px 12px rgba(0,0,0,.55);
+    }
+    .reel-actions {
+      position: absolute;
+      right: 18px;
+      bottom: clamp(86px, 17vh, 130px);
+      z-index: 5;
+      display: grid;
+      gap: 12px;
+      color: var(--media-text);
+      text-align: center;
+    }
+    .action-bubble {
+      width: 58px;
+      min-height: 58px;
+      border-radius: 999px;
+      background: var(--viewer-panel);
+      border: 1px solid var(--viewer-border);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: grid;
+      place-items: center;
+      padding: 7px;
+      font-weight: 800;
+      color: inherit;
+      text-decoration: none;
+      transition: transform var(--motion-fast) var(--ease-pop), background var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out), box-shadow var(--motion) var(--ease-out);
+    }
+    .action-bubble:hover { transform: translateY(-2px) scale(1.035); box-shadow: 0 14px 30px rgba(0,0,0,.22); }
+    .action-bubble:active { transform: scale(.96); }
+    .action-bubble small {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--media-muted);
+    }
+    .reel-reactions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+    }
+    .reel-rx {
+      min-width: 50px;
+      border-radius: 999px;
+      padding: 5px 8px;
+      background: var(--viewer-panel);
+      border: 1px solid var(--viewer-border);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-weight: 800;
+    }
+    .reel-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .source-link {
+      min-height: 30px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: var(--media-button-bg);
+      color: var(--media-button-text);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 900;
+      box-shadow: 0 8px 22px rgba(0,0,0,.18);
+      border: 1px solid var(--media-button-border);
+      cursor: pointer;
+      transition: transform var(--motion-fast) var(--ease-pop), background var(--motion) var(--ease-out), color var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out), box-shadow var(--motion) var(--ease-out);
+    }
+    .source-link:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(0,0,0,.24); }
+    .source-link:active { transform: scale(.97); }
+    .photo-dots {
+      position: absolute;
+      top: 12px;
+      left: 14px;
+      right: 14px;
+      z-index: 6;
+      display: flex;
+      gap: 5px;
+    }
+    .photo-dot {
+      flex: 1;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--media-dot-bg);
+    }
+    .photo-dot.active { background: var(--media-dot-active); }
+    .photo-nav {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+    }
+    .photo-nav button {
+      position: absolute;
+      top: 50%;
+      width: 38px;
+      height: 62px;
+      border-radius: 999px;
+      transform: translateY(-50%);
+      background: var(--media-nav-bg);
+      color: var(--media-text);
+      pointer-events: auto;
+      display: grid;
+      place-items: center;
+      font-size: 0;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: transform var(--motion-fast) var(--ease-pop), background var(--motion) var(--ease-out), opacity var(--motion) var(--ease-out);
+    }
+    .photo-nav button:first-child { left: 10px; }
+    .photo-nav button:last-child { right: 10px; }
+    .photo-nav button::before {
+      content: ">";
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 800;
+    }
+    .photo-nav button:first-child::before {
+      content: "<";
+    }
+    .photo-nav button:hover {
+      background: var(--media-nav-hover);
+      pointer-events: auto;
+      transform: translateY(-50%) scale(1.04);
+    }
+    .rx { display: inline-flex; align-items: center; gap: 4px; margin: 0 4px 5px 0; padding: 3px 7px; border-radius: 999px; background: var(--rx-bg); white-space: nowrap; }
+    .empty { min-height: 320px; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 28px; }
+    .empty strong { display: block; color: var(--ink); font-size: 18px; margin-bottom: 6px; }
+
+    @keyframes pageIn {
+      from { opacity: .001; transform: translateY(7px) scale(.997); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes panelIn {
+      from { opacity: .001; transform: translateY(10px) scale(.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes imageIn {
+      from { opacity: .001; transform: translateY(8px) scale(.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 1ms !important;
+      }
+    }
+
+    @media (max-width: 1050px) {
+      .import-tools { grid-template-columns: 1fr; }
+      .viewer-layout { grid-template-columns: minmax(0, 1fr); }
+      .import-layout .side { position: static; }
+      .viewer-controls { position: absolute; }
+      .toolbar { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (min-width: 701px) and (max-width: 1050px) {
+      .topbar-inner {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 16px;
+      }
+      .brand { justify-content: center; }
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 7px;
+        width: 100%;
+      }
+      .actions > * { min-width: 0; width: 100%; }
+      .actions .lang-select { grid-column: span 2; }
+      .actions .btn, .actions .lang-select { min-height: 38px; padding-inline: 7px; font-size: 13px; }
+      .modal { padding: 14px; }
+      .modal-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .modal-actions .btn { min-width: 0; }
+    }
+    @media (max-width: 820px), (max-aspect-ratio: 4 / 5) {
+      .media-board {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 8px 74px clamp(132px, 25vh, 198px) 8px;
+      }
+      .thumb-strip {
+        bottom: clamp(92px, 16vh, 132px);
+      }
+      .reel-actions {
+        right: 10px;
+      }
+      .reel-overlay {
+        right: 74px;
+      }
+    }
+    @media (max-height: 560px) {
+      .topbar-inner {
+        padding: 7px 12px;
+        gap: 8px;
+      }
+      .mark {
+        width: 30px;
+        height: 30px;
+        border-radius: 7px;
+        font-size: 12px;
+      }
+      h1 { font-size: 15px; }
+      .subtitle { display: none; }
+      .actions { gap: 6px; }
+      .btn {
+        min-height: 30px;
+        padding: 5px 9px;
+        font-size: 12px;
+      }
+      .media-board {
+        padding-bottom: 84px;
+        padding-right: 72px;
+      }
+      .reel-overlay {
+        left: 12px;
+        right: 74px;
+      }
+      .reel-rank {
+        margin-bottom: 6px;
+      }
+      .reel-msg {
+        max-height: 54px;
+      }
+      .action-bubble {
+        width: 50px;
+        min-height: 50px;
+      }
+      .reel-actions {
+        gap: 7px;
+        bottom: 72px;
+      }
+      .thumb-strip {
+        bottom: 58px;
+      }
+      .reel-rx {
+        min-width: 44px;
+        padding: 4px 6px;
+      }
+    }
+    @media (max-height: 420px) {
+      .media-board {
+        padding-bottom: 64px;
+      }
+      .thumb-strip {
+        bottom: 46px;
+        gap: 6px;
+      }
+      .reel-overlay {
+        bottom: 8px;
+      }
+      .reel-msg {
+        display: none;
+      }
+      .reel-meta {
+        margin-bottom: 0;
+      }
+    }
+    @media (max-width: 700px) {
+      html { overflow: hidden; }
+      body { font-size: 14px; }
+      .topbar-inner {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
+        padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left));
+      }
+      .brand { gap: 8px; }
+      .mark { width: 34px; height: 34px; }
+      h1 { font-size: 16px; }
+      .subtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .actions { display: flex; align-items: center; gap: 6px; }
+      .actions > * { min-width: 0; }
+      .actions #importPageBtn, .actions #viewerPageBtn, .actions #matrixPageBtn, .actions #telegramSyncBtn,
+      .actions #manualChannelBtn, .actions #exportBtn, .actions #closeBtn { display: none; }
+      .actions .lang-select { min-width: 108px; width: 108px; }
+      .actions #themeBtn { min-width: 40px; width: 40px; overflow: hidden; font-size: 0; }
+      .actions #themeBtn::before { content: "◐"; font-size: 20px; }
+      .btn, .lang-select { min-height: 40px; padding: 8px; font-size: 13px; }
+      .mobile-nav {
+        position: fixed;
+        z-index: 50;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        padding: 8px max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+        background: var(--topbar-bg);
+        border-top: 1px solid var(--line);
+        box-shadow: 0 -10px 24px rgba(0,0,0,.12);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+      }
+      .mobile-nav .btn { min-height: 42px; border-radius: 10px; transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out); }
+      .mobile-nav .btn.active { background: var(--brand); color: var(--button-text); box-shadow: var(--button-shadow); }
+      .mobile-nav #mobileChannelBtn { font-size: 12px; }
+      main { padding: 12px max(12px, env(safe-area-inset-right)) calc(68px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+      .viewer-layout, .matrix-layout { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+      .toolbar { grid-template-columns: 1fr; }
+      /* mobile: show compact quick-import, hide full path-import panel */
+      .import-tools { grid-template-columns: 1fr; }
+      .import-tools .import-panel:last-child { display: none; }
+      .telegram-quick-import { display: grid; padding: 8px; gap: 6px; border-radius: 8px; }
+      .telegram-quick-import .field { margin: 0; }
+      .telegram-quick-import label { font-size: 12px; margin-bottom: 4px; }
+      .path-import { display: none; }
+      .mobile-remote-note {
+        display: block;
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--brand);
+        border-radius: 8px;
+        padding: 11px 12px;
+        color: var(--status-text);
+        background: var(--status-bg);
+        line-height: 1.55;
+        font-size: 13px;
+      }
+      /* channel cards: keep essential tools visible on mobile */
+      .history-item { align-items: start; gap: 6px; padding: 8px; }
+      .history-index { width: 28px; min-height: 28px; border-radius: 6px; font-size: 11px; }
+      .history-title { font-size: 13px; }
+      .history-handle-link { font-size: 11px; padding: 1px 7px; }
+      .history-handle-missing { font-size: 10px; padding: 1px 7px; }
+      .history-location { font-size: 10px; }
+      .history-tools { gap: 4px; }
+      .history-tools .history-mini { width: 28px; min-height: 28px; border-radius: 6px; font-size: 12px; }
+      /* hide only up/down arrows on mobile; keep drag+star+delete */
+      .history-tools .btn:not(.history-mini) { flex: 1 1 auto; font-size: 12px; min-height: 30px; }
+      .history-tools .history-drag { display: inline-grid; touch-action: none; }
+      .modal { align-items: end; padding: 0; }
+      .modal-panel {
+        width: 100%;
+        max-height: min(88dvh, 720px);
+        overflow: auto;
+        border-radius: 14px 14px 0 0;
+        padding: 16px max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      }
+      .viewer-toggle { top: 10px; left: max(10px, env(safe-area-inset-left)); width: 44px; height: 44px; }
+      .viewer-controls {
+        top: 10px;
+        left: max(10px, env(safe-area-inset-left));
+        width: min(360px, calc(100% - 20px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+        max-height: calc(100% - 20px);
+        padding-top: 42px;
+        transform: translateX(calc(-100% - 20px));
+      }
+      .media-board { padding: 8px 8px 148px; }
+      .main-panel { border-radius: 8px; }
+      .photo-nav button { width: 36px; height: 52px; }
+      .photo-nav button:first-child { left: 6px; }
+      .photo-nav button:last-child { right: 6px; }
+      .thumb-strip { bottom: 100px; max-width: calc(100vw - 24px); }
+      .reel-actions {
+        left: auto;
+        right: 10px;
+        bottom: 120px;
+        display: grid;
+        gap: 14px;
+        text-align: center;
+        justify-content: unset;
+        align-items: unset;
+        overflow-x: visible;
+      }
+      .action-bubble { width: 50px; min-height: 50px; padding: 6px; flex: unset; }
+      .action-bubble small { font-size: 10px; }
+      .reel-reactions { flex-direction: column; gap: 8px; }
+      .reel-rx { min-width: 0; padding: 5px 8px; font-size: 12px; }
+      .reel-overlay {
+        left: 14px;
+        right: 80px;
+        bottom: 14px;
+      }
+      .reel-rank { min-height: 24px; margin-bottom: 8px; padding: 3px 10px; font-size: 11px; }
+      .reel-sender { font-size: 16px; font-weight: 900; margin-bottom: 4px; }
+      .reel-meta { font-size: 11px; margin-bottom: 6px; }
+      .reel-msg { max-height: 56px; font-size: 13px; line-height: 1.5; }
+      .matrix-gallery { padding: 8px; }
+      /* ── Mobile viewer: TikTok-style ── */
+      .gallery { touch-action: pan-y; }
+      .reel-media { touch-action: pan-y; }
+      .matrix-gallery { padding: 8px; }
+      .matrix-grid { column-width: clamp(140px, 45vw, 220px); column-gap: 8px; }
+      .matrix-card { margin-bottom: 8px; min-height: 112px; border-radius: 7px; }
+      .lightbox { padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
+      .lightbox-img { max-width: 100%; max-height: 100%; border-radius: 6px; }
+    }
+    @media (max-width: 390px) {
+      .btn, .lang-select { font-size: 12px; }
+      .history-list { grid-template-columns: 1fr; }
+      .history-item { grid-template-columns: 30px minmax(0, 1fr); }
+      .history-title-row { align-items: flex-start; flex-direction: column; gap: 3px; }
+      .history-tools { grid-column: 2; justify-content: flex-start; }
+      .reel-msg { display: none; }
+      .reel-actions { justify-content: flex-start; }
+    }
+    @media (max-width: 700px) and (max-height: 520px) {
+      .topbar-inner { flex-direction: row; align-items: center; padding-block: 6px; }
+      .subtitle { display: none; }
+      .btn, .lang-select { min-height: 32px; }
+      .media-board { padding-bottom: 78px; }
+      .thumb-strip { bottom: 58px; }
+      .reel-actions { left: auto; right: 8px; bottom: 58px; gap: 5px; }
+      .action-bubble { width: 38px; min-height: 38px; }
+      .reel-actions .action-bubble small, .reel-reactions { display: none; }
+      .reel-overlay { left: 12px; right: 12px; bottom: 7px; }
+    }
+    @media (min-width: 701px) {
+      .mobile-nav, .mobile-remote-note { display: none; }
+    }
+    @media (min-width: 1051px) {
+      .topbar-inner { max-width: 1440px; padding: 12px 24px; }
+      .actions { flex-wrap: nowrap; }
+      .actions .btn { padding-inline: 11px; }
+      main { max-width: 1440px; padding: 22px 24px 30px; }
+      .import-layout { gap: 16px; }
+      .import-panel { padding: 20px; gap: 16px; }
+      .side { top: 92px; }
+    }
+    /* ── iPhone 13 / 移动端专属深度重构 ── */
+    @media (max-width: 430px) {
+      :root {
+        --card-radius: 14px;
+        --card-gap: 10px;
+      }
+      /* 顶部栏极简一行 */
+      .topbar-inner {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+      }
+      .topbar-inner .brand { flex: 1; min-width: 0; }
+      .topbar-inner .mark { width: 32px; height: 32px; border-radius: 8px; font-size: 13px; }
+      .topbar-inner h1 { font-size: 16px; }
+      .topbar-inner .subtitle { display: none; }
+      .topbar-inner .actions { gap: 6px; flex-shrink: 0; }
+      .topbar-inner .actions > *:not(#themeBtn):not(.lang-select) { display: none; }
+      .topbar-inner .lang-select { min-width: 0; width: auto; padding: 4px 8px; font-size: 12px; min-height: 32px; }
+      .topbar-inner #themeBtn { min-width: 32px; width: 32px; min-height: 32px; padding: 0; font-size: 0; border-radius: 8px; }
+      .topbar-inner #themeBtn::before { content: "◐"; font-size: 18px; }
+      /* 主内容区内边距 */
+      main { padding: 10px 12px calc(80px + env(safe-area-inset-bottom)) 12px; }
+      .viewer-layout, .matrix-layout { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+      /* 导入页：移除面板边框，融为一体 */
+      .import-layout { gap: 10px; }
+      .import-panel { padding: 0; background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+      /* 频道列表面板也不要有边框 */
+      .import-channels { padding: 0; background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; overflow: hidden; max-width: 100%; }
+      /* 搜索栏吸顶设计 */
+      .channel-search {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: var(--bg);
+        padding: 8px 0;
+        margin: 0;
+      }
+      .channel-search .input {
+        min-height: 40px;
+        border-radius: 12px;
+        padding: 8px 14px;
+        font-size: 15px;
+        background: var(--field-bg);
+        border: 1px solid var(--line);
+        box-shadow: 0 2px 10px rgba(0,0,0,.06);
+      }
+      /* 频道列表头：更大胆 */
+      .history-head { margin-bottom: 6px; }
+      .history-head .section-title { font-size: 18px; font-weight: 900; }
+      .history-stats { font-size: 13px; padding: 3px 12px; }
+      /* 频道卡片：iOS 风格大圆角卡片 */
+      .history-list {
+        grid-template-columns: 1fr;
+        gap: var(--card-gap);
+        padding: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-gutter: stable;
+        overscroll-behavior-x: none;
+        touch-action: pan-y;
+        min-width: 0;
+      }
+      .history-item {
+        grid-template-columns: 34px minmax(0, 1fr);
+        grid-template-rows: auto auto;
+        gap: 6px 10px;
+        padding: 14px;
+        border-radius: var(--card-radius);
+        border: 0;
+        background: var(--panel);
+        box-shadow: 0 2px 12px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.04);
+        min-width: 0;
+        max-width: 100%;
+      }
+      [data-theme="dark"] .history-item {
+        box-shadow: 0 2px 12px rgba(0,0,0,.24), 0 0 0 1px rgba(255,255,255,.06);
+      }
+      .history-item.fav {
+        box-shadow: 0 2px 14px rgba(245,158,11,.18), 0 0 0 1.5px var(--favorite-border);
+      }
+      .history-index {
+        grid-row: 1 / 3;
+        width: 34px;
+        min-height: 34px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 900;
+        background: var(--soft);
+        border: 0;
+      }
+      .history-main { gap: 6px; }
+      .history-title-row { gap: 6px; }
+      .history-title { font-size: 15px; font-weight: 800; }
+      .history-star { font-size: 16px; }
+      .history-handle-link, .history-handle-missing { font-size: 12px; padding: 3px 10px; border-radius: 10px; }
+      .history-location { display: none; }
+      /* 工具按钮：放在卡片底部整行 */
+      .history-tools {
+        grid-column: 1 / -1;
+        justify-content: stretch;
+        gap: 8px;
+      }
+      .history-tools .history-mini {
+        width: 36px;
+        min-height: 36px;
+        border-radius: 10px;
+        font-size: 14px;
+      }
+      .history-tools .btn:not(.history-mini) {
+        flex: 1;
+        min-height: 36px;
+        border-radius: 10px;
+        font-size: 13px;
+      }
+      /* 导入工具：手机端完全隐藏 */
+      .import-tools { display: none; }
+      .import-status { display: block; padding: 8px 0 0; background: transparent; border: 0; font-size: 12px; }
+      /* 底部导航 */
+      .mobile-nav {
+        padding: 8px 10px max(8px, env(safe-area-inset-bottom)) 10px;
+        gap: 8px;
+        border-radius: 20px 20px 0 0;
+      }
+      .mobile-nav .btn {
+        min-height: 44px;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1px;
+        padding: 4px 6px;
+        font-size: 10px;
+        font-weight: 700;
+      }
+      .nav-icon { font-size: 18px; line-height: 1; display: block; }
+      .nav-label { line-height: 1; }
+      .mobile-nav .btn.active {
+        background: var(--brand);
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(35,131,196,.35);
+      }
+      [data-theme="dark"] .mobile-nav .btn.active {
+        box-shadow: 0 4px 14px rgba(56,189,248,.3);
+      }
+      /* 模态框 */
+      .modal-panel { border-radius: 16px 16px 0 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="mark">TG</div>
+        <div>
+          <h1>TG Reaction Ranker</h1>
+          <div class="subtitle" id="sourceLabel" data-i18n="source.empty">导入 Telegram HTML 文件夹或 JSON</div>
+        </div>
+      </div>
+      <div class="actions">
+        <select class="select lang-select" id="languageSelect" aria-label="Language">
+          <option value="zh-CN">简体中文</option>
+          <option value="zh-TW">繁體中文</option>
+          <option value="en">English</option>
+        </select>
+        <button class="btn" id="importPageBtn" type="button" data-i18n="nav.import">导入</button>
+        <button class="btn secondary" id="viewerPageBtn" type="button" data-i18n="nav.viewer">观看</button>
+        <button class="btn secondary" id="matrixPageBtn" type="button" data-i18n="nav.matrix">矩阵</button>
+        <button class="btn secondary" id="manualChannelBtn" type="button" disabled data-i18n="nav.channel">频道链接</button>
+        <button class="btn secondary" id="telegramSyncBtn" type="button">Telegram 同步</button>
+        <button class="btn secondary" id="themeBtn" type="button"></button>
+        <button class="btn secondary" id="exportBtn" type="button" disabled data-i18n="nav.export">导出 CSV</button>
+        <button class="btn secondary" id="closeBtn" type="button" data-i18n="nav.close">关闭应用</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="mobile-nav" aria-label="Mobile navigation">
+    <button class="btn secondary" id="mobileImportPageBtn" type="button"><span class="nav-icon">📥</span><span class="nav-label">导入</span></button>
+    <button class="btn secondary" id="mobileViewerPageBtn" type="button"><span class="nav-icon">👁️</span><span class="nav-label">观看</span></button>
+    <button class="btn secondary" id="mobileMatrixPageBtn" type="button"><span class="nav-icon">🔲</span><span class="nav-label">矩阵</span></button>
+    <button class="btn secondary" id="mobileChannelBtn" type="button" disabled><span class="nav-icon">🔗</span><span class="nav-label">频道</span></button>
+  </nav>
+
+  <main class="page import-layout" id="importPage">
+    <div class="import-tools">
+      <div class="mobile-remote-note" role="status" data-i18n="mobile.remoteHint">手机端为远程查看模式：请先在电脑上导入频道，或在下方粘贴 Telegram 链接自动下载。</div>
+      <section class="panel import-panel" style="padding:12px;">
+        <div class="telegram-quick-import">
+          <div class="field">
+            <label for="telegramQuickTarget">📎 Telegram 频道/群组链接 — 自动下载图片 & 表情包</label>
+            <input class="input" id="telegramQuickTarget" placeholder="粘贴链接如 https://t.me/channel_name，回车自动导入" autocomplete="url">
+          </div>
+          <button class="btn" id="telegramQuickImportBtn" type="button">🚀 自动下载并导入</button>
+        </div>
+      </section>
+      <section class="panel import-panel" style="padding:12px;">
+        <div class="path-import">
+          <div class="field">
+            <label for="pathInput" data-i18n="import.pathLabel">本地导出路径</label>
+            <textarea class="input" id="pathInput" rows="2" data-i18n-placeholder="import.pathPlaceholder" placeholder="粘贴导出文件夹路径，多个路径每行一个&#10;Cmd+Enter 导入"></textarea>
+          </div>
+          <div style="display:flex;gap:8px;align-items:end;">
+            <button class="btn secondary" id="browseBtn" type="button">📁 浏览...</button>
+            <button class="btn" id="pathImportBtn" type="button" data-i18n="import.pathButton">导入路径</button>
+          </div>
+        </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel import-channels" style="display:flex;flex-direction:column;overflow:hidden;padding:12px;">
+      <div class="status import-status" id="status" data-i18n="status.initial">粘贴 Telegram 频道链接自动下载，或选择本地 Telegram 导出文件夹导入。</div>
+      <div class="history-head">
+        <h2 class="section-title" data-i18n="history.title">已导入频道</h2>
+        <span class="history-stats" id="channelCount">0</span>
+        <button class="btn secondary" id="refreshImportsBtn" type="button" data-i18n="history.refresh" style="margin-left:auto;">刷新</button>
+      </div>
+      <div class="channel-search">
+        <input class="input" id="channelSearch" type="search" placeholder="🔍 搜索频道名称或频道号..." autocomplete="off">
+      </div>
+      <div class="telegram-progress" id="telegramProgress" hidden style="margin:0 0 8px;">
+        <div class="telegram-progress-head"><strong id="telegramProgressTitle">等待下载任务</strong><span id="telegramProgressCount">0 条消息 · 0 个媒体</span></div>
+        <progress id="telegramProgressBar" max="100" value="0"></progress>
+        <div class="telegram-progress-detail" id="telegramProgressDetail">下载开始后会显示当前图片或贴纸及文件进度。</div>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="import-note" data-i18n="history.empty">还没有导入频道。</div>
+      </div>
+    </section>
+  </main>
+
+  <main class="page viewer-layout" id="viewerPage" hidden>
+    <button class="viewer-toggle" id="viewerToggle" type="button" data-i18n-aria-label="viewer.menu" aria-label="观看菜单"><span aria-hidden="true">&#9776;</span></button>
+    <aside class="panel side viewer-controls" id="viewerControls">
+      <section class="section">
+        <h2 class="section-title" data-i18n="viewer.controls">观看控制</h2>
+        <div class="field">
+          <label for="query" data-i18n="viewer.searchLabel">搜索消息或发送者</label>
+          <input class="input" id="query" type="search" data-i18n-placeholder="viewer.searchPlaceholder" placeholder="关键词">
+        </div>
+        <div class="field">
+          <label for="sortMode" data-i18n="viewer.sortLabel">排序</label>
+          <select class="select" id="sortMode">
+            <option value="score" data-i18n="viewer.sortScore">最高分</option>
+            <option value="reactions" data-i18n="viewer.sortReactions">最多反馈</option>
+            <option value="date_desc" data-i18n="viewer.sortNewest">最新</option>
+            <option value="date_asc" data-i18n="viewer.sortOldest">最早</option>
+          </select>
+        </div>
+        <label class="check"><input id="includeForwarded" type="checkbox" checked><span data-i18n="viewer.includeForwarded">包含转发消息</span></label>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title" data-i18n="viewer.emojiFilter">表情筛选</h2>
+        <div class="emoji-list" id="emojiList"></div>
+      </section>
+    </aside>
+
+    <section class="viewer-content">
+      <div class="panel gallery-wrap">
+        <div class="gallery" id="gallery">
+          <div class="empty"><div><strong data-i18n="empty.noData">暂无数据</strong><span data-i18n="empty.loadHint">到导入页加载 Telegram 导出文件。</span></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <main class="page matrix-layout" id="matrixPage" hidden>
+    <section class="matrix-gallery" id="matrixGallery">
+      <div class="empty"><div><strong data-i18n="empty.noData">暂无数据</strong><span data-i18n="empty.loadHint">到导入页加载 Telegram 导出文件。</span></div></div>
+    </section>
+  </main>
+
+  <div class="lightbox" id="lightbox" hidden>
+    <div class="lightbox-backdrop" id="lightboxBackdrop"></div>
+    <img class="lightbox-img" id="lightboxImg" alt="">
+  </div>
+
+  <div class="modal" id="channelModal" hidden>
+    <div class="modal-backdrop" id="channelModalBackdrop"></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="channelModalTitle">
+      <div class="modal-head">
+        <h2 class="modal-title" id="channelModalTitle">📎 添加频道</h2>
+        <button class="btn secondary" id="channelCancelBtn" type="button" data-i18n="common.close">关闭</button>
+      </div>
+      <div class="field">
+        <label for="channelQuickInput">粘贴 Telegram 频道链接，自动下载图片和表情包</label>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;">
+          <input class="input" id="channelQuickInput" type="url" placeholder="https://t.me/channel_name" autocomplete="url">
+          <button class="btn" id="channelQuickImportBtn" type="button">🚀 导入</button>
+        </div>
+      </div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:14px 0;">
+      <div class="field">
+        <label for="channelUrlInput" data-i18n="channel.urlLabel">手动设置频道链接（仅影响跳转按钮）</label>
+        <input class="input" id="channelUrlInput" type="text" placeholder="https://t.me/example">
+        <div class="modal-note" id="channelCurrent" data-i18n="channel.currentNone">当前未设置手动频道。</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn secondary" id="channelClearBtn" type="button" data-i18n="channel.clear">清除手动设置</button>
+        <button class="btn" id="channelApplyBtn" type="button" data-i18n="common.apply">应用</button>
+      </div>
+      <div class="modal-note" data-i18n="channel.help">应用后会立即把当前频道所有消息的按钮改成对应的原文跳转，例如 https://t.me/example/消息ID。</div>
+    </div>
+  </div>
+
+  <div class="modal" id="telegramModal" hidden>
+    <div class="modal-backdrop" id="telegramModalBackdrop"></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="telegramModalTitle">
+      <div class="modal-head">
+        <h2 class="modal-title" id="telegramModalTitle">Telegram 自动同步</h2>
+        <button class="btn secondary" id="telegramCancelBtn" type="button">关闭</button>
+      </div>
+      <div class="import-note">首次只需填写频道和手机号；验证登录后会自动开始完整同步，之后自动增量更新。</div>
+      <div class="field"><label for="telegramBotToken">🤖 Bot Token（转发链接到 Bot 自动下载）</label><input class="input" id="telegramBotToken" type="password" placeholder="从 @BotFather 获取，如 123456:ABC..." autocomplete="off"></div>
+      <div class="status" id="telegramBotStatus" style="margin-top:4px;"></div>
+      <div class="field"><label for="telegramApiId">API ID（已配置时可留空）</label><input class="input" id="telegramApiId" inputmode="numeric" autocomplete="off"></div>
+      <div class="field"><label for="telegramApiHash">API Hash（已配置时可留空）</label><input class="input" id="telegramApiHash" type="password" autocomplete="off"></div>
+      <div class="field"><label for="telegramPhone">手机号码</label><input class="input" id="telegramPhone" inputmode="tel" placeholder="+8613800000000"></div>
+      <div class="field"><label for="telegramTarget">频道链接或用户名</label><input class="input" id="telegramTarget" placeholder="https://t.me/telegram 或 @telegram"></div>
+      <div class="field"><label for="telegramInterval">同步间隔（分钟，至少 5）</label><input class="input" id="telegramInterval" type="number" min="5" value="15"></div>
+      <label class="check"><input id="telegramMedia" type="checkbox" checked><span>下载图片和其他媒体文件</span></label>
+      <div class="field"><label for="telegramCode">验证码</label><input class="input" id="telegramCode" inputmode="numeric" autocomplete="one-time-code"></div>
+      <div class="field"><label for="telegramPassword">两步验证密码（如启用）</label><input class="input" id="telegramPassword" type="password" autocomplete="current-password"></div>
+      <div class="status" id="telegramStatus">保存 API 配置后，发送登录验证码。</div>
+      <div class="modal-actions">
+        <button class="btn secondary" id="telegramSaveBtn" type="button">保存频道设置</button>
+        <button class="btn secondary" id="telegramSendCodeBtn" type="button">登录并发送验证码</button>
+        <button class="btn secondary" id="telegramVerifyCodeBtn" type="button">验证登录</button>
+        <button class="btn secondary" id="telegramVerifyPasswordBtn" type="button">验证密码</button>
+        <button class="btn" id="telegramSyncNowBtn" type="button">开始自动同步</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const HISTORY_KEY = "tgRankerImportHistory";
+    const CHANNEL_OVERRIDE_KEY = "tgRankerChannelOverrides";
+    const CHANNEL_PREFS_KEY = "tgRankerChannelPrefs";
+    const LANGUAGE_KEY = "tgRankerLanguage";
+    const HISTORY_LIMIT = 96;
+    const VIRTUAL_BUFFER = /Mobi|Android/i.test(navigator.userAgent) ? 14 : 3;
+    const MATRIX_BATCH_SIZE = /Mobi|Android/i.test(navigator.userAgent) ? 256 : 128;
+    const PRELOAD_AHEAD = /Mobi|Android/i.test(navigator.userAgent) ? 16 : 8;
+    const PRELOAD_BEHIND = /Mobi|Android/i.test(navigator.userAgent) ? 6 : 2;
+    const I18N = {
+      "zh-CN": {
+        "source.empty": "导入 Telegram HTML 文件夹或 JSON",
+        "source.loaded": "{source} - {count} 条带反馈的消息",
+        "nav.import": "导入",
+        "nav.viewer": "观看",
+        "nav.matrix": "矩阵",
+        "nav.channel": "频道链接",
+        "nav.themeDark": "主题：黑色",
+        "nav.themeWhite": "主题：白色",
+        "nav.export": "导出 CSV",
+        "nav.close": "关闭应用",
+        "mobile.remoteHint": "手机端为远程查看模式：请先在电脑上导入频道。此设备会自动加载电脑上最后一次导入的数据；也可在下方频道列表点“导入”。",
+        "import.pathLabel": "本地导出路径",
+        "import.pathPlaceholder": "C:\\Users\\27889\\Downloads\\Telegram Desktop\\ChatExport_2026-07-03 (1)",
+        "import.pathButton": "导入路径",
+        "import.dropTitle": "把 messages*.html / result.json 拖到这里",
+        "import.dropHint": "如果要显示图片和管理已导入频道，请在上面粘贴完整 ChatExport 文件夹路径。",
+        "status.initial": "还没有加载数据。粘贴导出文件夹路径后开始。",
+        "history.title": "已导入频道",
+        "history.refresh": "刷新",
+        "history.empty": "还没有导入频道。",
+        "history.browserNote": "浏览器文件夹导入记录。需要重新选择该文件夹后才能加载。",
+        "history.drag": "拖拽排序频道",
+        "history.favorite": "收藏频道",
+        "history.unfavorite": "取消收藏频道",
+        "history.moveUp": "频道上移",
+        "history.moveDown": "频道下移",
+        "history.delete": "删除频道",
+        "history.recorded": "已记录",
+        "history.import": "导入",
+        "history.confirmDelete": "确定要从列表删除这个频道吗？\n\n{label}\n\n已归档文件夹会移动到 DeletedImports。",
+        "history.orderSaved": "频道排序已保存。",
+        "history.browserRemoved": "已移除浏览器侧频道记录。",
+        "history.deleted": "已删除 {label}。备份已移动到 {trash}。",
+        "history.noHandle": "频道号未识别",
+        "history.favorited": "已收藏频道",
+        "viewer.menu": "观看菜单",
+        "viewer.controls": "观看控制",
+        "viewer.searchLabel": "搜索消息或发送者",
+        "viewer.searchPlaceholder": "关键词",
+        "viewer.sortLabel": "排序",
+        "viewer.sortScore": "最高分",
+        "viewer.sortReactions": "最多反馈",
+        "viewer.sortNewest": "最新",
+        "viewer.sortOldest": "最早",
+        "viewer.includeForwarded": "包含转发消息",
+        "viewer.emojiFilter": "表情筛选",
+        "common.all": "全部",
+        "common.close": "关闭",
+        "common.apply": "应用",
+        "empty.noData": "暂无数据",
+        "empty.loadHint": "到导入页加载 Telegram 导出文件。",
+        "channel.title": "设置频道链接",
+        "channel.urlLabel": "频道主页链接",
+        "channel.currentNone": "当前未设置手动频道。",
+        "channel.currentManual": "当前手动频道：@{handle}",
+        "channel.currentAuto": "当前自动频道：@{handle}",
+        "channel.currentMissing": "当前未设置频道链接，按钮会打开本地导出消息。",
+        "channel.clear": "清除手动设置",
+        "channel.help": "应用后会立即把当前频道所有消息的按钮改成对应的原文跳转，例如 https://t.me/example/消息ID。",
+        "channel.needImport": "先导入频道，再设置频道链接。",
+        "channel.badFormat": "频道链接格式不对。示例：https://t.me/example",
+        "channel.noBot": "这里需要频道主页链接，不能填 bot 链接。",
+        "channel.applied": "已应用手动频道 @{handle}。当前消息会跳转到 https://t.me/{handle}/消息ID",
+        "channel.clearedAuto": "已清除手动频道，恢复自动频道 @{handle}。",
+        "channel.clearedLocal": "已清除手动频道，当前会打开本地导出消息。",
+        "import.imported": "已导入",
+        "import.importedFromPath": "已从路径导入",
+        "import.filesIndexed": "{prefix} {files} 个消息文件，并索引 {media} 个图片文件。",
+        "import.noReactions": "没有找到反馈数据。请确认 HTML 文件是 Telegram 的 messages*.html。",
+        "import.ready": "已可观看。{messages} 条排行消息，{media} 个已索引图片。",
+        "import.noReactionData": "选中的导出中没有找到反馈数据。",
+        "import.noReadable": "没有找到可读取的 .html 或 .json 文件。空 messages 文件会被忽略。",
+        "import.htmlOnly": "多文件导入时只能选择 HTML 文件；JSON 需要单独导入。",
+        "import.needPath": "请先粘贴 Telegram 导出文件夹路径。",
+        "import.scanning": "正在扫描本地导出路径...",
+        "import.scanFail": "无法扫描该路径。",
+        "import.noServerFiles": "本地扫描器没有返回可读取的消息导出文件。",
+        "import.jsonAlone": "存在 JSON 导出时，需要单独导入。",
+        "import.cannotRead": "无法读取 {file}",
+        "import.stored": "已从 {source} 导入。已保存到 {root}{method}。",
+        "import.pathNote": "路径导入需要 EXE 本地服务正在运行。",
+        "jump.noLink": "没有可打开的具体链接。",
+        "jump.opening": "打开中",
+        "jump.opened": "已在新页面打开原文：{link}",
+        "jump.popup": "已请求新页面打开原文。如果浏览器拦截弹窗，请允许此页面打开新窗口：{link}",
+        "jump.openOriginal": "打开原文",
+        "jump.openExport": "打开导出",
+        "media.photos": "{count} 张图片",
+        "media.noPhoto": "无图片",
+        "media.importFolder": "导入完整文件夹后才能预览图片。",
+        "media.unsupported": "文本消息或暂不支持的媒体。",
+        "media.prevPhoto": "上一张图片",
+        "media.nextPhoto": "下一张图片",
+        "media.showPhoto": "显示第 {index} 张图片",
+        "media.photoAlt": "图片 {index}",
+        "media.previewRank": "预览第 {rank} 名",
+        "media.rankAlt": "第 {rank} 名",
+        "media.score": "分数",
+        "media.react": "反馈",
+        "media.photoCount": "{count} 张图片",
+        "media.nonText": "[非文本消息]",
+        "gallery.noMatches": "没有匹配结果",
+        "gallery.noDataLoaded": "未加载数据",
+        "gallery.adjustFilters": "调整筛选条件，或导入另一个导出文件。",
+        "gallery.loadImport": "到导入页加载 Telegram 导出文件夹。",
+        "matrix.noImages": "没有可显示图片",
+        "matrix.noImagesHint": "当前筛选结果里没有已索引到的图片消息。",
+        "matrix.noData": "暂无数据",
+        "matrix.loadMore": "继续下滑加载更多",
+        "matrix.meta": "{react} 反馈{photos}",
+        "app.shutdown": "应用正在关闭。你可以关闭这个标签页。"
+      },
+      "zh-TW": {
+        "source.empty": "匯入 Telegram HTML 資料夾或 JSON",
+        "source.loaded": "{source} - {count} 則帶回饋的訊息",
+        "nav.import": "匯入",
+        "nav.viewer": "觀看",
+        "nav.matrix": "矩陣",
+        "nav.channel": "頻道連結",
+        "nav.themeDark": "主題：黑色",
+        "nav.themeWhite": "主題：白色",
+        "nav.export": "匯出 CSV",
+        "nav.close": "關閉應用",
+        "mobile.remoteHint": "手機端為遠端檢視模式：請先在電腦上匯入頻道。此裝置會自動載入電腦上最後一次匯入的資料；也可在下方頻道列表點「匯入」。",
+        "import.pathLabel": "本機匯出路徑",
+        "import.pathPlaceholder": "C:\\Users\\27889\\Downloads\\Telegram Desktop\\ChatExport_2026-07-03 (1)",
+        "import.pathButton": "匯入路徑",
+        "import.dropTitle": "把 messages*.html / result.json 拖到這裡",
+        "import.dropHint": "如果要顯示圖片和管理已匯入頻道，請在上方貼上完整 ChatExport 資料夾路徑。",
+        "status.initial": "尚未載入資料。貼上匯出資料夾路徑後開始。",
+        "history.title": "已匯入頻道",
+        "history.refresh": "重新整理",
+        "history.empty": "尚未匯入頻道。",
+        "history.browserNote": "瀏覽器資料夾匯入紀錄。需要重新選擇該資料夾後才能載入。",
+        "history.drag": "拖曳排序頻道",
+        "history.favorite": "收藏頻道",
+        "history.unfavorite": "取消收藏頻道",
+        "history.moveUp": "頻道上移",
+        "history.moveDown": "頻道下移",
+        "history.delete": "刪除頻道",
+        "history.recorded": "已記錄",
+        "history.import": "匯入",
+        "history.confirmDelete": "確定要從列表刪除這個頻道嗎？\n\n{label}\n\n已歸檔資料夾會移動到 DeletedImports。",
+        "history.orderSaved": "頻道排序已儲存。",
+        "history.browserRemoved": "已移除瀏覽器側頻道紀錄。",
+        "history.deleted": "已刪除 {label}。備份已移動到 {trash}。",
+        "history.noHandle": "頻道號未識別",
+        "history.favorited": "已收藏頻道",
+        "viewer.menu": "觀看選單",
+        "viewer.controls": "觀看控制",
+        "viewer.searchLabel": "搜尋訊息或發送者",
+        "viewer.searchPlaceholder": "關鍵字",
+        "viewer.sortLabel": "排序",
+        "viewer.sortScore": "最高分",
+        "viewer.sortReactions": "最多回饋",
+        "viewer.sortNewest": "最新",
+        "viewer.sortOldest": "最早",
+        "viewer.includeForwarded": "包含轉發訊息",
+        "viewer.emojiFilter": "表情篩選",
+        "common.all": "全部",
+        "common.close": "關閉",
+        "common.apply": "套用",
+        "empty.noData": "暫無資料",
+        "empty.loadHint": "到匯入頁載入 Telegram 匯出檔案。",
+        "channel.title": "設定頻道連結",
+        "channel.urlLabel": "頻道首頁連結",
+        "channel.currentNone": "目前未設定手動頻道。",
+        "channel.currentManual": "目前手動頻道：@{handle}",
+        "channel.currentAuto": "目前自動頻道：@{handle}",
+        "channel.currentMissing": "目前未設定頻道連結，按鈕會開啟本機匯出訊息。",
+        "channel.clear": "清除手動設定",
+        "channel.help": "套用後會立即把目前頻道所有訊息的按鈕改成對應的原文跳轉，例如 https://t.me/example/訊息ID。",
+        "channel.needImport": "請先匯入頻道，再設定頻道連結。",
+        "channel.badFormat": "頻道連結格式不對。範例：https://t.me/example",
+        "channel.noBot": "這裡需要頻道首頁連結，不能填 bot 連結。",
+        "channel.applied": "已套用手動頻道 @{handle}。目前訊息會跳轉到 https://t.me/{handle}/訊息ID",
+        "channel.clearedAuto": "已清除手動頻道，恢復自動頻道 @{handle}。",
+        "channel.clearedLocal": "已清除手動頻道，目前會開啟本機匯出訊息。",
+        "import.imported": "已匯入",
+        "import.importedFromPath": "已從路徑匯入",
+        "import.filesIndexed": "{prefix} {files} 個訊息檔案，並索引 {media} 個圖片檔案。",
+        "import.noReactions": "沒有找到回饋資料。請確認 HTML 檔案是 Telegram 的 messages*.html。",
+        "import.ready": "已可觀看。{messages} 則排行訊息，{media} 個已索引圖片。",
+        "import.noReactionData": "選中的匯出中沒有找到回饋資料。",
+        "import.noReadable": "沒有找到可讀取的 .html 或 .json 檔案。空 messages 檔案會被忽略。",
+        "import.htmlOnly": "多檔匯入時只能選擇 HTML 檔案；JSON 需要單獨匯入。",
+        "import.needPath": "請先貼上 Telegram 匯出資料夾路徑。",
+        "import.scanning": "正在掃描本機匯出路徑...",
+        "import.scanFail": "無法掃描該路徑。",
+        "import.noServerFiles": "本機掃描器沒有返回可讀取的訊息匯出檔案。",
+        "import.jsonAlone": "存在 JSON 匯出時，需要單獨匯入。",
+        "import.cannotRead": "無法讀取 {file}",
+        "import.stored": "已從 {source} 匯入。已儲存到 {root}{method}。",
+        "import.pathNote": "路徑匯入需要 EXE 本機服務正在執行。",
+        "jump.noLink": "沒有可開啟的具體連結。",
+        "jump.opening": "開啟中",
+        "jump.opened": "已在新頁面開啟原文：{link}",
+        "jump.popup": "已請求新頁面開啟原文。如果瀏覽器攔截彈窗，請允許此頁面開啟新視窗：{link}",
+        "jump.openOriginal": "開啟原文",
+        "jump.openExport": "開啟匯出",
+        "media.photos": "{count} 張圖片",
+        "media.noPhoto": "無圖片",
+        "media.importFolder": "匯入完整資料夾後才能預覽圖片。",
+        "media.unsupported": "文字訊息或暫不支援的媒體。",
+        "media.prevPhoto": "上一張圖片",
+        "media.nextPhoto": "下一張圖片",
+        "media.showPhoto": "顯示第 {index} 張圖片",
+        "media.photoAlt": "圖片 {index}",
+        "media.previewRank": "預覽第 {rank} 名",
+        "media.rankAlt": "第 {rank} 名",
+        "media.score": "分數",
+        "media.react": "回饋",
+        "media.photoCount": "{count} 張圖片",
+        "media.nonText": "[非文字訊息]",
+        "gallery.noMatches": "沒有匹配結果",
+        "gallery.noDataLoaded": "未載入資料",
+        "gallery.adjustFilters": "調整篩選條件，或匯入另一個匯出檔案。",
+        "gallery.loadImport": "到匯入頁載入 Telegram 匯出資料夾。",
+        "matrix.noImages": "沒有可顯示圖片",
+        "matrix.noImagesHint": "目前篩選結果裡沒有已索引到的圖片訊息。",
+        "matrix.noData": "暫無資料",
+        "matrix.loadMore": "繼續下滑載入更多",
+        "matrix.meta": "{react} 回饋{photos}",
+        "app.shutdown": "應用正在關閉。你可以關閉這個標籤頁。"
+      },
+      en: {
+        "source.empty": "Import Telegram HTML folder or JSON",
+        "source.loaded": "{source} - {count} messages with reactions",
+        "nav.import": "Import",
+        "nav.viewer": "Viewer",
+        "nav.matrix": "Matrix",
+        "nav.channel": "Channel Link",
+        "nav.themeDark": "Theme: Black",
+        "nav.themeWhite": "Theme: White",
+        "nav.export": "Export CSV",
+        "nav.close": "Close App",
+        "mobile.remoteHint": "Mobile is remote-view mode: import a channel on the computer first. This device automatically loads the computer's most recent import; you can also choose Import from the channel list below.",
+        "import.pathLabel": "Local export path",
+        "import.pathPlaceholder": "C:\\Users\\27889\\Downloads\\Telegram Desktop\\ChatExport_2026-07-03 (1)",
+        "import.pathButton": "Import Path",
+        "import.dropTitle": "Drop messages*.html / result.json here",
+        "import.dropHint": "For photos and Imported channels control, paste the whole ChatExport folder path above.",
+        "status.initial": "No data loaded. Paste the export folder path to start.",
+        "history.title": "Imported channels",
+        "history.refresh": "Refresh",
+        "history.empty": "No imported channels yet.",
+        "history.browserNote": "Browser folder import. Select the folder again to reload.",
+        "history.drag": "Drag channel",
+        "history.favorite": "Favorite channel",
+        "history.unfavorite": "Unfavorite channel",
+        "history.moveUp": "Move channel up",
+        "history.moveDown": "Move channel down",
+        "history.delete": "Delete channel",
+        "history.recorded": "Recorded",
+        "history.import": "Import",
+        "history.confirmDelete": "Delete this channel from the list?\n\n{label}\n\nArchived folders will be moved to DeletedImports.",
+        "history.orderSaved": "Channel order saved.",
+        "history.browserRemoved": "Browser-only channel record removed.",
+        "history.deleted": "Deleted {label}. Backup moved to {trash}.",
+        "history.noHandle": "No handle detected",
+        "history.favorited": "Favorited channel",
+        "viewer.menu": "Viewer menu",
+        "viewer.controls": "Viewer controls",
+        "viewer.searchLabel": "Search message or sender",
+        "viewer.searchPlaceholder": "Keyword",
+        "viewer.sortLabel": "Sort",
+        "viewer.sortScore": "Top score",
+        "viewer.sortReactions": "Most reactions",
+        "viewer.sortNewest": "Newest",
+        "viewer.sortOldest": "Oldest",
+        "viewer.includeForwarded": "Include forwarded messages",
+        "viewer.emojiFilter": "Emoji filter",
+        "common.all": "All",
+        "common.close": "Close",
+        "common.apply": "Apply",
+        "empty.noData": "No data",
+        "empty.loadHint": "Go to Import and load Telegram export files.",
+        "channel.title": "Set Channel Link",
+        "channel.urlLabel": "Channel home link",
+        "channel.currentNone": "No manual channel is set.",
+        "channel.currentManual": "Current manual channel: @{handle}",
+        "channel.currentAuto": "Current auto channel: @{handle}",
+        "channel.currentMissing": "No channel link is set. Buttons will open local exported messages.",
+        "channel.clear": "Clear Manual Setting",
+        "channel.help": "After applying, all current channel message buttons will jump to the matching original message, for example https://t.me/example/messageID.",
+        "channel.needImport": "Import a channel before setting its link.",
+        "channel.badFormat": "Invalid channel link. Example: https://t.me/example",
+        "channel.noBot": "Use a channel home link here, not a bot link.",
+        "channel.applied": "Applied manual channel @{handle}. Current messages will jump to https://t.me/{handle}/messageID",
+        "channel.clearedAuto": "Manual channel cleared. Restored auto channel @{handle}.",
+        "channel.clearedLocal": "Manual channel cleared. Current messages will open local exported messages.",
+        "import.imported": "Imported",
+        "import.importedFromPath": "Imported from path",
+        "import.filesIndexed": "{prefix} {files} message files and indexed {media} image files.",
+        "import.noReactions": "No reactions found. Make sure the HTML files are Telegram messages*.html.",
+        "import.ready": "Ready for viewing. {messages} ranked messages, {media} indexed images.",
+        "import.noReactionData": "No reaction data was found in the selected export.",
+        "import.noReadable": "No readable .html or .json files found. Empty messages files are ignored.",
+        "import.htmlOnly": "When selecting multiple files, choose HTML files only. Import JSON alone.",
+        "import.needPath": "Paste a Telegram export folder path first.",
+        "import.scanning": "Scanning local export path...",
+        "import.scanFail": "Unable to scan that path.",
+        "import.noServerFiles": "No readable message export files returned by the local scanner.",
+        "import.jsonAlone": "When a JSON export is present, import it alone.",
+        "import.cannotRead": "Cannot read {file}",
+        "import.stored": "Imported from {source}. Stored at {root}{method}.",
+        "import.pathNote": "Path import works when the EXE local server is running.",
+        "jump.noLink": "No original message link is available.",
+        "jump.opening": "Opening",
+        "jump.opened": "Opened original message in a new page: {link}",
+        "jump.popup": "Requested a new page for the original message. If the browser blocked it, allow this page to open new windows: {link}",
+        "jump.openOriginal": "Open Original",
+        "jump.openExport": "Open Export",
+        "media.photos": "{count} photos",
+        "media.noPhoto": "No photo",
+        "media.importFolder": "Import the whole folder to preview images.",
+        "media.unsupported": "Text or unsupported media.",
+        "media.prevPhoto": "Previous photo",
+        "media.nextPhoto": "Next photo",
+        "media.showPhoto": "Show photo {index}",
+        "media.photoAlt": "Photo {index}",
+        "media.previewRank": "Preview rank {rank}",
+        "media.rankAlt": "Rank {rank}",
+        "media.score": "score",
+        "media.react": "react",
+        "media.photoCount": "{count} photo",
+        "media.nonText": "[non-text message]",
+        "gallery.noMatches": "No matches",
+        "gallery.noDataLoaded": "No data loaded",
+        "gallery.adjustFilters": "Adjust filters or import another export.",
+        "gallery.loadImport": "Go to the Import page and load a Telegram export folder.",
+        "matrix.noImages": "No images to show",
+        "matrix.noImagesHint": "The current filtered results have no indexed image messages.",
+        "matrix.noData": "No data",
+        "matrix.loadMore": "Scroll down to load more",
+        "matrix.meta": "{react} react{photos}",
+        "app.shutdown": "App is shutting down. You can close this tab."
+      }
+    };
+    const state = {
+      source: "",
+      sourceKey: "",
+      messages: [],
+      rows: [],
+      channelHandle: "",
+      autoChannelHandle: "",
+      manualChannelHandle: "",
+      channelEntryLink: "",
+      selectedEmoji: "__all",
+      mediaUrls: new Map(),
+      localUrls: new Set(),
+      emojiItems: [],
+      emojiTotal: 0,
+      topScore: 0,
+      history: [],
+      channelFavorites: {},
+      channelOrder: [],
+      virtual: { itemHeight: 0, start: -1, end: -1, frame: 0 },
+      matrixVirtual: { rendered: 0, frame: 0 }
+    };
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      topbar: document.querySelector(".topbar"),
+      drop: $("drop"),
+      pathInput: $("pathInput"), pathImportBtn: $("pathImportBtn"), browseBtn: $("browseBtn"), telegramQuickTarget: $("telegramQuickTarget"), telegramQuickImportBtn: $("telegramQuickImportBtn"), telegramProgress: $("telegramProgress"), telegramProgressTitle: $("telegramProgressTitle"), telegramProgressCount: $("telegramProgressCount"), telegramProgressBar: $("telegramProgressBar"), telegramProgressDetail: $("telegramProgressDetail"),
+      sourceLabel: $("sourceLabel"), status: $("status"), exportBtn: $("exportBtn"),
+      closeBtn: $("closeBtn"), themeBtn: $("themeBtn"), languageSelect: $("languageSelect"), manualChannelBtn: $("manualChannelBtn"), telegramSyncBtn: $("telegramSyncBtn"), emojiList: $("emojiList"),
+      importPageBtn: $("importPageBtn"), viewerPageBtn: $("viewerPageBtn"), matrixPageBtn: $("matrixPageBtn"),
+      mobileImportPageBtn: $("mobileImportPageBtn"), mobileViewerPageBtn: $("mobileViewerPageBtn"), mobileMatrixPageBtn: $("mobileMatrixPageBtn"), mobileChannelBtn: $("mobileChannelBtn"),
+      importPage: $("importPage"), viewerPage: $("viewerPage"), matrixPage: $("matrixPage"),
+      importNote: $("importNote"),
+      viewerToggle: $("viewerToggle"), viewerControls: $("viewerControls"),
+      historyList: $("historyList"), refreshImportsBtn: $("refreshImportsBtn"), channelSearch: $("channelSearch"), channelCount: $("channelCount"), matrixGallery: $("matrixGallery"),
+      lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxBackdrop: $("lightboxBackdrop"),
+      channelModal: $("channelModal"), channelModalBackdrop: $("channelModalBackdrop"), channelUrlInput: $("channelUrlInput"), channelQuickInput: $("channelQuickInput"), channelQuickImportBtn: $("channelQuickImportBtn"),
+      channelCurrent: $("channelCurrent"), channelApplyBtn: $("channelApplyBtn"), channelClearBtn: $("channelClearBtn"), channelCancelBtn: $("channelCancelBtn"),
+      telegramModal: $("telegramModal"), telegramModalBackdrop: $("telegramModalBackdrop"), telegramCancelBtn: $("telegramCancelBtn"), telegramApiId: $("telegramApiId"), telegramApiHash: $("telegramApiHash"), telegramPhone: $("telegramPhone"), telegramTarget: $("telegramTarget"), telegramInterval: $("telegramInterval"), telegramMedia: $("telegramMedia"), telegramCode: $("telegramCode"), telegramPassword: $("telegramPassword"), telegramStatus: $("telegramStatus"), telegramSaveBtn: $("telegramSaveBtn"), telegramSendCodeBtn: $("telegramSendCodeBtn"), telegramVerifyCodeBtn: $("telegramVerifyCodeBtn"), telegramVerifyPasswordBtn: $("telegramVerifyPasswordBtn"), telegramSyncNowBtn: $("telegramSyncNowBtn"), telegramBotToken: $("telegramBotToken"), telegramBotStatus: $("telegramBotStatus"),
+      includeForwarded: $("includeForwarded"),
+      messageCount: $("messageCount"), reactionCount: $("reactionCount"),
+      emojiCount: $("emojiCount"), topScore: $("topScore"),
+      query: $("query"), sortMode: $("sortMode"),
+      gallery: $("gallery")
+    };
+
+    const isRemoteClient = !["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+    document.documentElement.classList.toggle("remote-client", isRemoteClient);
+    let currentLang = "zh-CN";
+    function normalizeLanguage(lang) {
+      const value = String(lang || "").toLowerCase();
+      if (value.startsWith("zh-tw") || value.startsWith("zh-hk") || value.startsWith("zh-mo")) return "zh-TW";
+      if (value.startsWith("zh")) return "zh-CN";
+      if (value.startsWith("en")) return "en";
+      return "zh-CN";
+    }
+    function t(key, vars = {}) {
+      const dict = I18N[currentLang] || I18N["zh-CN"];
+      const fallback = I18N["zh-CN"] || {};
+      const template = dict[key] ?? fallback[key] ?? key;
+      return String(template).replace(/\{(\w+)\}/g, (_match, name) => vars[name] ?? "");
+    }
+    function n(value) { return new Intl.NumberFormat(currentLang || "zh-CN").format(value || 0); }
+    function applyTranslations(root = document) {
+      root.querySelectorAll("[data-i18n]").forEach((node) => {
+        node.textContent = t(node.dataset.i18n);
+      });
+      root.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+        node.setAttribute("placeholder", t(node.dataset.i18nPlaceholder));
+      });
+      root.querySelectorAll("[data-i18n-title]").forEach((node) => {
+        node.setAttribute("title", t(node.dataset.i18nTitle));
+      });
+      root.querySelectorAll("[data-i18n-aria-label]").forEach((node) => {
+        node.setAttribute("aria-label", t(node.dataset.i18nAriaLabel));
+      });
+    }
+    function setLanguage(lang, rerender = true) {
+      currentLang = normalizeLanguage(lang || localStorage.getItem(LANGUAGE_KEY) || navigator.language);
+      document.documentElement.lang = currentLang;
+      localStorage.setItem(LANGUAGE_KEY, currentLang);
+      if (els.languageSelect) els.languageSelect.value = currentLang;
+      applyTranslations();
+      setTheme(document.documentElement.dataset.theme || localStorage.getItem("tgRankerTheme") || "dark");
+      updateSourceLabel();
+      updateChannelModalText();
+      if (rerender) render();
+    }
+    function photoText(count) {
+      if (currentLang === "en") return `${n(count)} photo${Number(count) === 1 ? "" : "s"}`;
+      return t("media.photoCount", { count: n(count) });
+    }
+    function esc(value) {
+      return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    }
+    function setStatus(text, warn = false) {
+      els.status.textContent = text;
+      els.status.className = warn ? "status warn" : "status";
+    }
+    function setImportNote(text) {
+      if (els.importNote) els.importNote.textContent = text;
+    }
+    function setPage(page) {
+      if ((page === "viewer" || page === "matrix") && !state.messages.length) {
+        render();
+      }
+      const isImport = page === "import";
+      const isViewer = page === "viewer";
+      const isMatrix = page === "matrix";
+      els.importPage.hidden = !isImport;
+      els.viewerPage.hidden = !isViewer;
+      els.matrixPage.hidden = !isMatrix;
+      els.importPageBtn.classList.toggle("secondary", !isImport);
+      els.viewerPageBtn.classList.toggle("secondary", !isViewer);
+      els.matrixPageBtn.classList.toggle("secondary", !isMatrix);
+      els.mobileImportPageBtn?.classList.toggle("active", isImport);
+      els.mobileViewerPageBtn?.classList.toggle("active", isViewer);
+      els.mobileMatrixPageBtn?.classList.toggle("active", isMatrix);
+      els.mobileChannelBtn?.classList.toggle("active", false);
+      const activePage = isImport ? els.importPage : (isViewer ? els.viewerPage : els.matrixPage);
+      [els.importPage, els.viewerPage, els.matrixPage].forEach((node) => node.classList.remove("page-enter"));
+      if (activePage) {
+        void activePage.offsetWidth;
+        activePage.classList.add("page-enter");
+      }
+      requestAnimationFrame(() => {
+        if (isViewer) renderGallery(false);
+        if (isMatrix) renderMatrix(false);
+        applyImageFits();
+      });
+    }
+    function setTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      localStorage.setItem("tgRankerTheme", theme);
+      els.themeBtn.textContent = theme === "dark" ? t("nav.themeDark") : t("nav.themeWhite");
+    }
+    function toggleTheme() {
+      setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+    }
+    function loadChannelOverrides() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(CHANNEL_OVERRIDE_KEY) || "{}");
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+      } catch (_) {
+        return {};
+      }
+    }
+    function saveChannelOverrides(overrides) {
+      localStorage.setItem(CHANNEL_OVERRIDE_KEY, JSON.stringify(overrides || {}));
+    }
+    function sourceKeyFor(value) {
+      return String(value || "").trim().toLowerCase();
+    }
+    function getChannelOverride(key) {
+      const normalized = sourceKeyFor(key);
+      if (!normalized) return "";
+      return remapTelegramChannel(loadChannelOverrides()[normalized] || "");
+    }
+    function setChannelOverride(key, handle) {
+      const normalized = sourceKeyFor(key);
+      if (!normalized) return;
+      const overrides = loadChannelOverrides();
+      const clean = remapTelegramChannel(handle || "");
+      if (clean) overrides[normalized] = clean;
+      else delete overrides[normalized];
+      saveChannelOverrides(overrides);
+    }
+    function manualHandleFromInput(value) {
+      let text = String(value || "").trim();
+      if (!text) return "";
+      const webMatch = text.match(/web\.telegram\.org\/[^#]*#@([A-Za-z0-9_]{3,})/i);
+      if (webMatch) return remapTelegramChannel(webMatch[1]);
+      const urlMatch = text.match(/(?:https?:\/\/)?(?:t\.me|telegram\.me)\/(?:s\/)?([A-Za-z0-9_]{3,})(?:[/?#].*)?$/i);
+      if (urlMatch) return remapTelegramChannel(urlMatch[1]);
+      const plainMatch = text.match(/^@?([A-Za-z0-9_]{3,})$/);
+      if (plainMatch) return remapTelegramChannel(plainMatch[1]);
+      return "";
+    }
+    function sourceDisplayName() {
+      const base = String(state.source || "Telegram export").replace(/\s+@[A-Za-z0-9_]{3,}\b/g, "").trim() || "Telegram export";
+      const handle = remapTelegramChannel(state.channelHandle || "");
+      return handle ? `${base} @${handle}` : base;
+    }
+    function updateSourceLabel() {
+      if (state.messages.length) {
+        els.sourceLabel.textContent = t("source.loaded", { source: sourceDisplayName(), count: n(state.messages.length) });
+      } else {
+        els.sourceLabel.textContent = t("source.empty");
+      }
+    }
+    function updateChannelModalText() {
+      const current = remapTelegramChannel(state.channelHandle || "");
+      const auto = remapTelegramChannel(state.autoChannelHandle || "");
+      const manual = remapTelegramChannel(state.manualChannelHandle || "");
+      if (els.channelCurrent) {
+        els.channelCurrent.textContent = manual
+          ? t("channel.currentManual", { handle: manual })
+          : (current ? t("channel.currentAuto", { handle: current }) : t("channel.currentMissing"));
+      }
+      if (els.channelClearBtn) els.channelClearBtn.disabled = !manual;
+      if (els.channelUrlInput && !els.channelUrlInput.value) {
+        els.channelUrlInput.value = current ? `https://t.me/${current}` : "";
+      }
+    }
+    function openChannelModal() {
+      els.channelQuickInput.value = "";
+      els.channelUrlInput.value = state.channelHandle ? `https://t.me/${state.channelHandle}` : "";
+      updateChannelModalText();
+      els.channelModal.hidden = false;
+      requestAnimationFrame(() => els.channelQuickInput.focus());
+    }
+    function closeChannelModal() {
+      els.channelModal.hidden = true;
+    }
+    function applyManualChannel() {
+      const handle = manualHandleFromInput(els.channelUrlInput.value);
+      if (!handle) {
+        setStatus(t("channel.badFormat"), true);
+        els.channelUrlInput.focus();
+        return;
+      }
+      if (/bot$/i.test(handle)) {
+        setStatus(t("channel.noBot"), true);
+        return;
+      }
+      state.manualChannelHandle = handle;
+      setUnifiedChannel(handle, false);
+      setChannelOverride(state.sourceKey || state.source, handle);
+      setChannelOverride(state.source, handle);
+      updateSourceLabel();
+      render();
+      closeChannelModal();
+      setStatus(t("channel.applied", { handle }));
+    }
+    function clearManualChannel() {
+      state.manualChannelHandle = "";
+      setChannelOverride(state.sourceKey || state.source, "");
+      setChannelOverride(state.source, "");
+      setUnifiedChannel(state.autoChannelHandle || "", false);
+      updateSourceLabel();
+      render();
+      updateChannelModalText();
+      setStatus(state.channelHandle ? t("channel.clearedAuto", { handle: state.channelHandle }) : t("channel.clearedLocal"));
+    }
+    function normalizeHistoryKey(path) {
+      return sourceKeyFor(path);
+    }
+    function loadChannelPrefs() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(CHANNEL_PREFS_KEY) || "{}");
+        const favorites = parsed && typeof parsed.favorites === "object" && !Array.isArray(parsed.favorites) ? parsed.favorites : {};
+        state.channelFavorites = Object.fromEntries(Object.entries(favorites)
+          .map(([key, value]) => [normalizeHistoryKey(key), Boolean(value)])
+          .filter(([key, value]) => key && value));
+        state.channelOrder = Array.isArray(parsed?.order) ? parsed.order.map(normalizeHistoryKey).filter(Boolean) : [];
+      } catch (_) {
+        state.channelFavorites = {};
+        state.channelOrder = [];
+      }
+    }
+    function saveChannelPrefs() {
+      localStorage.setItem(CHANNEL_PREFS_KEY, JSON.stringify({
+        favorites: state.channelFavorites,
+        order: state.channelOrder
+      }));
+    }
+    function uniqueHistoryItems(items) {
+      const result = [];
+      const seen = new Set();
+      (items || []).map(normalizeHistoryItem).filter(Boolean).forEach((item) => {
+        const key = normalizeHistoryKey(item.path);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        result.push(item);
+      });
+      return result;
+    }
+    function syncHistoryPrefs(items) {
+      const currentKeys = uniqueHistoryItems(items).map((item) => normalizeHistoryKey(item.path));
+      const current = new Set(currentKeys);
+      const ordered = [];
+      const seen = new Set();
+      for (const key of state.channelOrder.map(normalizeHistoryKey)) {
+        if (key && current.has(key) && !seen.has(key)) {
+          ordered.push(key);
+          seen.add(key);
+        }
+      }
+      for (const key of currentKeys) {
+        if (key && !seen.has(key)) {
+          ordered.push(key);
+          seen.add(key);
+        }
+      }
+      state.channelOrder = ordered.slice(0, HISTORY_LIMIT);
+      state.channelFavorites = Object.fromEntries(Object.entries(state.channelFavorites)
+        .map(([key, value]) => [normalizeHistoryKey(key), Boolean(value)])
+        .filter(([key, value]) => key && value && current.has(key)));
+    }
+    function orderedHistoryItems(items = state.history) {
+      const normalized = uniqueHistoryItems(items).slice(0, HISTORY_LIMIT);
+      syncHistoryPrefs(normalized);
+      const orderIndex = new Map(state.channelOrder.map((key, index) => [key, index]));
+      return normalized.sort((a, b) => {
+        // primary: time-based — newest imports first
+        const timeDelta = (b.updated || 0) - (a.updated || 0);
+        if (timeDelta) return timeDelta;
+        // secondary: manual drag reorder (channelOrder acts as tiebreaker)
+        const aKey = normalizeHistoryKey(a.path);
+        const bKey = normalizeHistoryKey(b.path);
+        const orderDelta = (orderIndex.get(aKey) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(bKey) ?? Number.MAX_SAFE_INTEGER);
+        if (orderDelta) return orderDelta;
+        return a.label.localeCompare(b.label, "zh-CN", { numeric: true });
+      });
+    }
+    function persistHistory() {
+      state.history = orderedHistoryItems(state.history).slice(0, HISTORY_LIMIT);
+      syncHistoryPrefs(state.history);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history));
+      saveChannelPrefs();
+    }
+    function loadHistory() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+        state.history = Array.isArray(parsed) ? uniqueHistoryItems(parsed).slice(0, HISTORY_LIMIT) : [];
+      } catch (_) {
+        state.history = [];
+      }
+      persistHistory();
+      renderHistory();
+      // immediately sync with server to purge deleted items
+      loadKnownImports();
+    }
+    function mergeHistory(items) {
+      state.history = uniqueHistoryItems([...(items || []), ...state.history]).slice(0, HISTORY_LIMIT);
+      persistHistory();
+      renderHistory();
+    }
+    async function loadKnownImports() {
+      try {
+        const response = await fetch("/api/imports", { cache: "no-store" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) return;
+        const serverPaths = new Set((data.imports || []).map((item) => item.path));
+        // keep only items that still exist on server, merge fresh data
+        state.history = state.history
+          .map(normalizeHistoryItem)
+          .filter((item) => item && serverPaths.has(item.path));
+        mergeHistory((data.imports || []).map((item) => ({
+          path: item.path,
+          label: item.label || item.path,
+          handle: item.handle || "",
+          updated: item.updated || 0,
+        })));
+      } catch (_) {}
+    }
+    function normalizeHistoryItem(item) {
+      if (!item) return null;
+      if (typeof item === "string") {
+        const path = item.trim();
+        return path ? { path, label: path, handle: "", updated: 0, browserOnly: path.startsWith("browser-folder:") } : null;
+      }
+      const path = String(item.path || "").trim();
+      if (!path) return null;
+      const label = String(item.label || item.displayName || path).trim() || path;
+      return { path, label, handle: String(item.handle || "").trim().replace(/^@/, ""), updated: Number(item.updated || 0), browserOnly: Boolean(item.browserOnly || path.startsWith("browser-folder:")) };
+    }
+    function saveHistory(path, label = "", options = {}) {
+      const value = String(path || "").trim();
+      if (!value) return;
+      const key = normalizeHistoryKey(value);
+      const entry = {
+        path: value,
+        label: String(label || value).trim() || value,
+        updated: Date.now() / 1000,
+        browserOnly: Boolean(options.browserOnly),
+        handle: String(options.handle || "").trim().replace(/^@/, "")
+      };
+      state.history = [entry, ...state.history.map(normalizeHistoryItem).filter((item) => item && normalizeHistoryKey(item.path) !== key)].slice(0, HISTORY_LIMIT);
+      state.channelOrder = [key, ...state.channelOrder.filter((item) => item !== key)].slice(0, HISTORY_LIMIT);
+      persistHistory();
+      renderHistory();
+    }
+    function toggleHistoryFavorite(path) {
+      const key = normalizeHistoryKey(path);
+      if (!key) return;
+      if (state.channelFavorites[key]) delete state.channelFavorites[key];
+      else state.channelFavorites[key] = true;
+      persistHistory();
+      renderHistory();
+    }
+    function moveHistoryItem(path, direction) {
+      const key = normalizeHistoryKey(path);
+      const dir = Number(direction) < 0 ? -1 : 1;
+      const visible = orderedHistoryItems(state.history).map((item) => normalizeHistoryKey(item.path));
+      const index = visible.indexOf(key);
+      const target = index + dir;
+      if (index < 0 || target < 0 || target >= visible.length) return;
+      [visible[index], visible[target]] = [visible[target], visible[index]];
+      state.channelOrder = [...visible, ...state.channelOrder.filter((item) => !visible.includes(item))].slice(0, HISTORY_LIMIT);
+      persistHistory();
+      renderHistory();
+    }
+    function reorderHistoryByDrop(sourcePath, targetPath, placeAfter = false) {
+      const sourceKey = normalizeHistoryKey(sourcePath);
+      const targetKey = normalizeHistoryKey(targetPath);
+      if (!sourceKey || !targetKey || sourceKey === targetKey) return;
+      const visible = orderedHistoryItems(state.history).map((item) => normalizeHistoryKey(item.path)).filter((key) => key !== sourceKey);
+      const targetIndex = visible.indexOf(targetKey);
+      if (targetIndex < 0) return;
+      visible.splice(targetIndex + (placeAfter ? 1 : 0), 0, sourceKey);
+      state.channelOrder = [...visible, ...state.channelOrder.filter((item) => !visible.includes(item))].slice(0, HISTORY_LIMIT);
+      persistHistory();
+      renderHistory();
+      setStatus(t("history.orderSaved"));
+    }
+    function removeHistoryEntry(path) {
+      const key = normalizeHistoryKey(path);
+      if (!key) return;
+      state.history = state.history.map(normalizeHistoryItem).filter((item) => item && normalizeHistoryKey(item.path) !== key);
+      state.channelOrder = state.channelOrder.filter((item) => item !== key);
+      delete state.channelFavorites[key];
+      persistHistory();
+      renderHistory();
+    }
+    async function deleteHistoryItem(path) {
+      const item = orderedHistoryItems(state.history).find((entry) => normalizeHistoryKey(entry.path) === normalizeHistoryKey(path));
+      if (!item) return;
+      const label = item.label || item.path;
+      if (!confirm(t("history.confirmDelete", { label }))) return;
+      if (item.browserOnly) {
+        removeHistoryEntry(item.path);
+        setStatus(t("history.browserRemoved"));
+        return;
+      }
+      try {
+        const response = await fetch("/api/delete-import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: item.path }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.error || "Unable to delete this channel.");
+        removeHistoryEntry(item.path);
+        await loadKnownImports();
+        setStatus(t("history.deleted", { label, trash: data.trash || "DeletedImports" }));
+      } catch (error) {
+        setStatus(error.message || String(error), true);
+      }
+    }
+    function renderHistory() {
+      if (!els.historyList) return;
+      const searchTerm = (els.channelSearch?.value || "").trim().toLowerCase();
+      const allItems = orderedHistoryItems(state.history);
+      const items = searchTerm
+        ? allItems.filter((item) => {
+            const identity = historyIdentity(item);
+            return identity.title.toLowerCase().includes(searchTerm)
+              || identity.handle.toLowerCase().includes(searchTerm)
+              || (item.path || "").toLowerCase().includes(searchTerm);
+          })
+        : allItems;
+      if (els.channelCount) {
+        els.channelCount.textContent = searchTerm
+          ? `${items.length} / ${allItems.length}`
+          : String(allItems.length);
+      }
+      if (!items.length) {
+        els.historyList.innerHTML = searchTerm
+          ? `<div class="import-note">没有匹配"${esc(searchTerm)}"的频道。</div>`
+          : `<div class="import-note">${esc(t("history.empty"))}</div>`;
+        return;
+      }
+      els.historyList.innerHTML = items.map((item, index) => {
+        const key = normalizeHistoryKey(item.path);
+        const favorite = Boolean(state.channelFavorites[key]);
+        const identity = historyIdentity(item);
+        const handleLink = identity.handle ? `https://t.me/${identity.handle}` : "";
+        return `
+        <div class="history-item${favorite ? " fav" : ""}">
+          <div class="history-index">#${index + 1}</div>
+          <div class="history-main">
+            <div class="history-title-row">
+              <div class="history-title" title="${esc(identity.title)}">${esc(identity.title)}</div>
+              ${favorite ? `<span class="history-star" title="${esc(t("history.favorited"))}">&#9733;</span>` : ""}
+            </div>
+            ${identity.handle ? `<a class="history-handle-link" href="${esc(handleLink)}" target="_blank" rel="noopener" title="${esc(t("jump.openOriginal"))}: @${esc(identity.handle)}"><span class="history-handle-icon">&#128279;</span>@${esc(identity.handle)}</a>` : `<div class="history-handle-missing">${esc(t("history.noHandle"))}</div>`}
+            <div class="history-location" title="${esc(item.path)}">${item.browserOnly ? esc(t("history.browserNote")) : esc(item.path)}</div>
+          </div>
+          <div class="history-tools">
+            <span class="btn secondary history-mini history-drag" draggable="true" data-history-drag="${esc(item.path)}" aria-label="${esc(t("history.drag"))}">&#9776;</span>
+            <button class="btn secondary history-mini${favorite ? " active" : ""}" type="button" data-history-favorite="${esc(item.path)}" aria-label="${esc(favorite ? t("history.unfavorite") : t("history.favorite"))}">${favorite ? "&#9733;" : "&#9734;"}</button>
+            <button class="btn secondary history-mini history-danger" type="button" data-history-delete="${esc(item.path)}" aria-label="${esc(t("history.delete"))}" title="${esc(t("history.delete"))}">删</button>
+            ${item.browserOnly ? `<button class="btn secondary" type="button" disabled>${esc(t("history.recorded"))}</button>` : `<button class="btn secondary" type="button" data-history-path="${esc(item.path)}">${esc(t("history.import"))}</button>`}
+          </div>
+        </div>
+      `; }).join("");
+    }
+    function historyIdentity(item) {
+      const rawLabel = String(item.label || item.path || "").trim();
+      const rawPath = String(item.path || "").trim();
+      // try explicit handle field first
+      let handle = String(item.handle || "").trim().replace(/^@/, "");
+      // check manual channel override
+      if (!handle) {
+        const override = getChannelOverride(rawPath) || getChannelOverride(rawLabel);
+        if (override) handle = override;
+      }
+      // try @xxx at end of label
+      if (!handle) {
+        const fromLabel = rawLabel.match(/@([A-Za-z0-9_]{3,})\s*$/);
+        if (fromLabel) handle = fromLabel[1];
+      }
+      // try @xxx anywhere in path
+      if (!handle) {
+        const fromPath = rawPath.match(/@([A-Za-z0-9_]{3,})/);
+        if (fromPath) handle = fromPath[1];
+      }
+      // try @xxx anywhere in label
+      if (!handle) {
+        const fromLabelAny = rawLabel.match(/@([A-Za-z0-9_]{3,})/);
+        if (fromLabelAny) handle = fromLabelAny[1];
+      }
+      // extract clean title: strip @handle from end of label
+      let title = rawLabel;
+      if (handle) {
+        title = rawLabel.replace(new RegExp(`\\s*@${handle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"), "").trim();
+        if (!title) title = rawLabel.replace(new RegExp(`@${handle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i"), "").trim();
+      }
+      if (!title && handle) title = `频道 @${handle}`;
+      if (!title) title = rawLabel || "Telegram 频道";
+      return { title, handle };
+    }
+    function normalizePath(path) {
+      return decodeURIComponent(String(path || "").replaceAll("\\", "/").replace(/^\.?\//, "")).toLowerCase();
+    }
+    function relativeFromWebkit(path) {
+      const normalized = String(path || "").replaceAll("\\", "/");
+      const index = normalized.indexOf("/");
+      return index >= 0 ? normalized.slice(index + 1) : normalized;
+    }
+    function clearMediaUrls() {
+      for (const url of new Set(state.mediaUrls.values())) {
+        if (String(url).startsWith("blob:")) URL.revokeObjectURL(url);
+      }
+      for (const url of state.localUrls) URL.revokeObjectURL(url);
+      state.mediaUrls.clear();
+      state.localUrls.clear();
+    }
+    function rememberMediaFile(file) {
+      if (!/^image\//i.test(file.type) && !/\.(png|jpe?g|gif|webp)$/i.test(file.name)) return;
+      const url = URL.createObjectURL(file);
+      state.localUrls.add(url);
+      const fullPath = file.webkitRelativePath || file.name;
+      const relativePath = relativeFromWebkit(fullPath);
+      [fullPath, relativePath, file.name].forEach((key) => {
+        if (key) state.mediaUrls.set(normalizePath(key), url);
+      });
+    }
+    function mediaUrl(path) {
+      const value = String(path || "");
+      if (/^(blob:|data:image\/|https?:\/\/|\/api\/)/i.test(value)) return value;
+      return state.mediaUrls.get(normalizePath(path)) || "";
+    }
+    function textFromTelegramNode(node) {
+      if (!node) return "";
+      const clone = node.cloneNode(true);
+      clone.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+      return clone.textContent.split("\n").map((line) => line.trim()).filter(Boolean).join("\n");
+    }
+    function imageSizeFromNode(img) {
+      if (!img) return { width: 0, height: 0 };
+      const style = img.getAttribute("style") || "";
+      const styleWidth = Number(style.match(/width:\s*([0-9.]+)px/i)?.[1] || 0);
+      const styleHeight = Number(style.match(/height:\s*([0-9.]+)px/i)?.[1] || 0);
+      const width = Number(img.getAttribute("width") || 0) || styleWidth || 0;
+      const height = Number(img.getAttribute("height") || 0) || styleHeight || 0;
+      return { width, height };
+    }
+    function normalizeText(value) {
+      if (Array.isArray(value)) {
+        return value.map((item) => typeof item === "string" ? item : (item && typeof item.text === "string" ? item.text : "")).join("");
+      }
+      return typeof value === "string" ? value : "";
+    }
+    function normalizeReactions(reactions) {
+      if (!Array.isArray(reactions)) return [];
+      const map = new Map();
+      for (const reaction of reactions) {
+        const emoji = typeof reaction === "string" ? reaction : (reaction.emoji || reaction.emoticon || reaction.reaction || reaction.value || "");
+        if (!emoji) continue;
+        const count = Math.max(1, Number(reaction.count ?? reaction.total_count ?? 1) || 1);
+        map.set(emoji, (map.get(emoji) || 0) + count);
+      }
+      return Array.from(map, ([emoji, count]) => ({ emoji, count })).sort((a, b) => b.count - a.count || a.emoji.localeCompare(b.emoji));
+    }
+    function normalizeHref(href) {
+      const value = String(href || "").trim();
+      if (/^(https?:\/\/|tg:\/\/)/i.test(value)) return value;
+      if (/^(?:www\.)?(?:t\.me|telegram\.me)\//i.test(value)) return `https://${value.replace(/^www\./i, "")}`;
+      return "";
+    }
+    const TELEGRAM_CHANNEL_REDIRECTS = Object.freeze({
+      yijihimeqwq1: "yijiqwq",
+      yijiqwq: "yijiqwq",
+      yijihimeqwq: "yijiqwq",
+      njdjfd: "njdjfd"
+    });
+    const CHANNEL_NAME_HANDLE_HINTS = Object.freeze({
+      "一姬": "yijiqwq",
+      "色色前线": "yijiqwq",
+      "花花🌸主播直播": "zbzwx",
+      "花花♡主播直播": "zbzwx",
+      "主播直播精选": "zbzwx",
+      "盯射榨精寸止女同调教套路直播": "njdjfd",
+      "盯射 阿黑颜 榨精 玩物套路直播": "njdjfd",
+      "盯射阿黑颜榨精玩物套路直播": "njdjfd"
+    });
+    function remapTelegramChannel(channel) {
+      let value = String(channel || "").trim();
+      const urlMatch = value.match(/(?:https?:\/\/)?(?:t\.me|telegram\.me)\/(?:s\/)?([A-Za-z0-9_]{3,})(?:[/?#].*)?$/i);
+      if (urlMatch) value = urlMatch[1];
+      value = value.replace(/^@/, "");
+      if (!value) return "";
+      return TELEGRAM_CHANNEL_REDIRECTS[value.toLowerCase()] || value;
+    }
+    function handleFromTitle(title) {
+      const text = String(title || "");
+      const explicit = text.match(/@([A-Za-z0-9_]{3,})/);
+      if (explicit) return remapTelegramChannel(explicit[1]);
+      for (const [marker, handle] of Object.entries(CHANNEL_NAME_HANDLE_HINTS)) {
+        if (marker && text.includes(marker)) return handle;
+      }
+      return "";
+    }
+    function handleFromPath(path) {
+      const match = String(path || "").match(/@([A-Za-z0-9_]{3,})/);
+      return match ? remapTelegramChannel(match[1]) : "";
+    }
+    function extractExportTitle(htmlText) {
+      const doc = new DOMParser().parseFromString(htmlText || "", "text/html");
+      const title = doc.querySelector(".page_header .text.bold")?.textContent?.trim().replace(/\s+/g, " ");
+      if (title) return title;
+      return doc.querySelector(".message.default .from_name")?.textContent?.trim().replace(/\s+/g, " ") || "";
+    }
+    function displayNameForImport(title, handle, fallback) {
+      const base = String(title || fallback || "Telegram export").trim();
+      const cleanHandle = remapTelegramChannel(handle);
+      if (!cleanHandle) return base;
+      const suffix = `@${cleanHandle}`;
+      return base.toLowerCase().includes(suffix.toLowerCase()) ? base : `${base} ${suffix}`;
+    }
+    function resolveTelegramTargetUrl(href) {
+      const value = normalizeHref(href);
+      if (!value) return "";
+      const parts = telegramMessageParts(value);
+      if (parts) {
+        if (parts.kind === "private") return `https://t.me/c/${parts.channel}/${parts.id}`;
+        return `https://t.me/${parts.channel}/${parts.id}`;
+      }
+      const channelMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/([A-Za-z0-9_]{3,})(?:[/?#].*)?$/i);
+      if (channelMatch) return `https://t.me/${remapTelegramChannel(channelMatch[1])}`;
+      const privateMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/c\/(\d+)(?:[/?#].*)?$/i);
+      if (privateMatch) return `https://t.me/c/${privateMatch[1]}`;
+      return value;
+    }
+    function normalizeTelegramEntryLink(href) {
+      const value = normalizeHref(href);
+      if (!value) return "";
+      const inviteMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/(\+[A-Za-z0-9_-]+)(?:[/?#].*)?$/i);
+      if (inviteMatch) return `https://t.me/${inviteMatch[1]}`;
+      const addListMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/(addlist\/[A-Za-z0-9_-]+)(?:[/?#].*)?$/i);
+      if (addListMatch) return `https://t.me/${addListMatch[1]}`;
+      const channelMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/([A-Za-z0-9_]{3,})(?:\/)?(?:[?#].*)?$/i);
+      if (!channelMatch) return "";
+      const handle = remapTelegramChannel(channelMatch[1]);
+      if (/bot$/i.test(handle)) return "";
+      return `https://t.me/${handle}`;
+    }
+    function inferTelegramEntryLinkFromTexts(items) {
+      let best = null;
+      const docs = Array.isArray(items) ? items : [];
+      docs.forEach((item, fileIndex) => {
+        const doc = new DOMParser().parseFromString(item.text || "", "text/html");
+        doc.querySelectorAll("a[href]").forEach((link, linkIndex) => {
+          const entry = normalizeTelegramEntryLink(link.getAttribute("href"));
+          if (!entry) return;
+          const message = link.closest(".message");
+          const context = `${link.textContent || ""} ${link.closest(".text")?.textContent || ""} ${message?.textContent || ""}`.replace(/\s+/g, " ").slice(0, 700);
+          let score = 1200 - fileIndex * 25 - linkIndex;
+          if (/备用|防丢|官方|频道|直播群|加入|一键|全部|群/i.test(context)) score += 220;
+          if (/addlist/i.test(entry)) score += 110;
+          if (/\/\+/i.test(entry)) score += 140;
+          if (/vip|bot|推广|广告|客服|购买|投稿/i.test(context)) score -= 170;
+          if (message?.id === "message1") score += 120;
+          if (!best || score > best.score) best = { link: entry, score };
+        });
+      });
+      return best?.link || "";
+    }
+    function telegramMessageParts(href) {
+      const value = normalizeHref(href);
+      const match = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/(?!s\/)([A-Za-z0-9_]{3,})\/(\d+)(?:[/?#].*)?$/i);
+      if (match) return { channel: remapTelegramChannel(match[1]), id: match[2], kind: "public" };
+      const webMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/s\/([A-Za-z0-9_]{3,})\/(\d+)(?:[/?#].*)?$/i);
+      if (webMatch) return { channel: remapTelegramChannel(webMatch[1]), id: webMatch[2], kind: "public" };
+      const privateMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/c\/(\d+)\/(\d+)(?:[/?#].*)?$/i);
+      if (privateMatch) return { channel: privateMatch[1], id: privateMatch[2], kind: "private" };
+      return null;
+    }
+    function telegramChannelUrl(href) {
+      const value = normalizeHref(href);
+      if (!value) return "";
+      const channelMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/([A-Za-z0-9_]{3,})(?:\/)?(?:[?#].*)?$/i);
+      if (channelMatch) return `https://t.me/${remapTelegramChannel(channelMatch[1])}`;
+      const messageMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/(?:s\/)?([A-Za-z0-9_]{3,})\/(\d+)(?:[/?#].*)?$/i);
+      if (messageMatch) return `https://t.me/${remapTelegramChannel(messageMatch[1])}`;
+      const privateMatch = value.match(/^https?:\/\/(?:t\.me|telegram\.me)\/c\/(\d+)(?:[/?#].*)?$/i);
+      if (privateMatch) return `https://t.me/c/${privateMatch[1]}`;
+      return value;
+    }
+    function telegramMessageWebUrl(href) {
+      const parts = telegramMessageParts(href);
+      if (parts) return `https://t.me/s/${parts.channel}/${parts.id}`;
+      return "";
+    }
+    function telegramMessageDirectUrl(href) {
+      const parts = telegramMessageParts(href);
+      if (parts) return `https://t.me/${parts.channel}/${parts.id}`;
+      return "";
+    }
+    function inferTelegramChannel(doc, title = "") {
+      const titled = handleFromTitle(title);
+      if (titled) return titled;
+      const messageIds = new Set(Array.from(doc.querySelectorAll(".message.default[id]")).map((node) => (node.id || "").replace("message", "")).filter(Boolean));
+      const counts = new Map();
+      doc.querySelectorAll("a[href]").forEach((link) => {
+        const parts = telegramMessageParts(link.getAttribute("href"));
+        if (!parts) return;
+        const rawChannel = String(parts.channel || "");
+        if (!Object.values(TELEGRAM_CHANNEL_REDIRECTS).includes(rawChannel.toLowerCase())) return;
+        const item = counts.get(parts.channel) || { channel: parts.channel, count: 0, matched: 0 };
+        item.count += 1;
+        if (messageIds.has(parts.id)) item.matched += 1;
+        counts.set(parts.channel, item);
+      });
+      const [best] = Array.from(counts.values()).sort((a, b) => (b.matched - a.matched) || (b.count - a.count) || a.channel.localeCompare(b.channel));
+      if (!best) return "";
+      if (best.matched >= 2 || best.count >= 5) return best.channel;
+      return "";
+    }
+    function inferTelegramChannelFromTexts(items, title = "", rootName = "") {
+      const titled = handleFromTitle(title);
+      if (titled) return titled;
+      const pathHandle = handleFromPath(rootName);
+      if (pathHandle) return pathHandle;
+      const messageIds = new Set();
+      const counts = new Map();
+      for (const item of items) {
+        const html = item.text || "";
+        for (const match of html.matchAll(/id=["']message(\d+)["']/g)) {
+          messageIds.add(match[1]);
+        }
+      }
+      for (const item of items) {
+        const html = item.text || "";
+        for (const match of html.matchAll(/(?:https?:\/\/|)(?:t\.me|telegram\.me)\/(?!s\/)([A-Za-z0-9_]{3,})\/(\d+)(?:[/?#][^"'<\s]*)?/gi)) {
+          const channel = match[1];
+          const id = match[2];
+          const mapped = remapTelegramChannel(channel);
+          const stat = counts.get(mapped) || { channel: mapped, count: 0, matched: 0 };
+          stat.count += 1;
+          if (messageIds.has(id)) stat.matched += 1;
+          counts.set(mapped, stat);
+        }
+      }
+      const ranked = Array.from(counts.values()).sort((a, b) => (b.matched - a.matched) || (b.count - a.count) || a.channel.localeCompare(b.channel));
+      const [best, second] = ranked;
+      if (!best) return "";
+      const secondMatched = second?.matched || 0;
+      const matchRatio = best.matched / Math.max(1, best.count);
+      const dominant = best.matched >= Math.max(8, secondMatched * 4);
+      const strongMatched = best.matched >= 8 && matchRatio >= 0.6 && dominant;
+      const broadCoverage = messageIds.size >= 50 && best.matched >= Math.max(20, Math.ceil(messageIds.size * 0.02)) && matchRatio >= 0.6 && dominant;
+      if (strongMatched || broadCoverage) return best.channel;
+      return "";
+    }
+    function sourceLinkForMessage(channel, id, links) {
+      if (channel && /^\d+$/.test(String(id || ""))) {
+        return `https://t.me/${remapTelegramChannel(channel)}/${id}`;
+      }
+      return "";
+    }
+    function jumpLinkForMessage(channel, id, links) {
+      if (channel && /^\d+$/.test(String(id || ""))) {
+        return `https://t.me/${remapTelegramChannel(channel)}/${id}`;
+      }
+      return "";
+    }
+    function extractLinks(node) {
+      if (!node) return [];
+      const seen = new Set();
+      return Array.from(node.querySelectorAll("a[href]")).map((link) => {
+        const href = normalizeHref(link.getAttribute("href"));
+        if (!href || seen.has(href)) return null;
+        seen.add(href);
+        return { href, text: link.textContent.trim().replace(/\s+/g, " ") || href };
+      }).filter(Boolean);
+    }
+    function pickSourceLink(links) {
+      for (const link of links) {
+        const webUrl = telegramMessageWebUrl(link.href);
+        if (webUrl) return webUrl;
+        const directUrl = telegramMessageDirectUrl(link.href);
+        if (directUrl) return directUrl;
+        const channelUrl = telegramChannelUrl(link.href);
+        if (channelUrl) return channelUrl;
+      }
+      return "";
+    }
+    function pickJumpLink(links) {
+      for (const link of links) {
+        const directUrl = telegramMessageDirectUrl(link.href);
+        if (directUrl) return directUrl;
+        const webUrl = telegramMessageWebUrl(link.href);
+        if (webUrl) return webUrl;
+        const channelUrl = telegramChannelUrl(link.href);
+        if (channelUrl) return channelUrl;
+      }
+      return "";
+    }
+    function pickPrimaryLink(links) {
+      return links.find((link) => /^https?:\/\//i.test(link.href))?.href || "";
+    }
+    function parseJson(data) {
+      const list = Array.isArray(data.messages) ? data.messages : (Array.isArray(data) ? data : []);
+      return list.map((msg) => {
+        const reactions = normalizeReactions(msg.reactions || msg.reaction_counts);
+        const links = [];
+        const rawLinks = Array.isArray(msg.links) ? msg.links : [];
+        rawLinks.forEach((item) => {
+          const href = normalizeHref(typeof item === "string" ? item : item?.href);
+          if (href) links.push({ href, text: href });
+        });
+        const media = (Array.isArray(msg.media) ? msg.media : []).map((item) => {
+          const href = typeof item === "string" ? item : (item?.href || item?.path || "");
+          return href ? { href, thumb: href, width: item?.width || 0, height: item?.height || 0 } : null;
+        }).filter(Boolean);
+        return {
+          id: msg.id ?? "",
+          date: msg.date || msg.date_unixtime || "",
+          from: msg.from || msg.actor || msg.author || "",
+          forwardedFrom: msg.forwarded_from || msg.forwarded_from_id || "",
+          text: normalizeText(msg.text || msg.caption || msg.file || msg.media_type),
+          media,
+          links,
+          sourceLink: resolveTelegramTargetUrl(msg.source_link || msg.link || "") || pickSourceLink(links),
+          jumpLink: resolveTelegramTargetUrl(msg.source_link || msg.link || "") || pickJumpLink(links),
+          primaryLink: pickPrimaryLink(links),
+          exportLink: "",
+          reactions,
+          total: reactions.reduce((sum, item) => sum + item.count, 0)
+        };
+      }).filter((msg) => msg.reactions.length);
+    }
+    function parseTelegramHtml(htmlText, context = {}) {
+      const doc = new DOMParser().parseFromString(htmlText, "text/html");
+      const sourceChannel = remapTelegramChannel(context.channelHandle || "");
+      let lastFrom = "";
+      let group = null;
+      const rows = [];
+
+      function mergeLinks(target, items) {
+        const seen = new Set(target.map((link) => link.href));
+        for (const link of items) {
+          if (!link.href || seen.has(link.href)) continue;
+          target.push(link);
+          seen.add(link.href);
+        }
+      }
+      function appendData(target, data) {
+        if (data.text) target.textParts.push(data.text);
+        target.media.push(...data.media);
+        mergeLinks(target.links, data.links);
+        if (data.reactions.length) {
+          target.reactions.push(...data.reactions);
+          if (!target.reactionId) target.reactionId = data.id;
+          if (!target.reactionDate) target.reactionDate = data.date;
+        }
+      }
+      function startGroup(data) {
+        group = {
+          id: data.id,
+          date: data.date,
+          from: data.sender,
+          textParts: [],
+          media: [],
+          links: [],
+          reactions: [],
+          reactionId: "",
+          reactionDate: ""
+        };
+        appendData(group, data);
+      }
+      function flushGroup() {
+        if (!group) return;
+        const reactions = normalizeReactions(group.reactions);
+        if (reactions.length) {
+          const linkId = group.reactionId || group.id;
+          const text = group.textParts.join("\n").trim();
+          rows.push({
+            id: linkId,
+            date: group.reactionDate || group.date,
+            from: group.from,
+            forwardedFrom: "",
+            text,
+            media: [...group.media],
+            links: group.links,
+            sourceLink: sourceLinkForMessage(sourceChannel, linkId, group.links),
+            jumpLink: jumpLinkForMessage(sourceChannel, linkId, group.links),
+            primaryLink: pickPrimaryLink(group.links),
+            exportLink: context.fileUrl && linkId ? `${context.fileUrl}#message${linkId}` : "",
+            reactions,
+            total: reactions.reduce((sum, item) => sum + item.count, 0)
+          });
+        }
+        group = null;
+      }
+
+      doc.querySelectorAll(".message.default").forEach((messageNode) => {
+        const body = messageNode.querySelector(":scope > .body") || messageNode;
+        const fromNode = body.querySelector(":scope > .from_name");
+        const sender = fromNode ? fromNode.textContent.trim().replace(/\s+/g, " ") : lastFrom;
+        if (sender) lastFrom = sender;
+        const id = (messageNode.id || "").replace("message", "");
+        const date = body.querySelector(":scope > .date.details")?.getAttribute("title") || "";
+        const textNode = body.querySelector(":scope > .text");
+        const text = textFromTelegramNode(textNode);
+        const links = extractLinks(textNode);
+        const media = Array.from(body.querySelectorAll(":scope > .media_wrap .photo_wrap")).map((link) => {
+          const img = link.querySelector("img.photo");
+          const size = imageSizeFromNode(img);
+          return {
+            href: link.getAttribute("href") || "",
+            thumb: img?.getAttribute("src") || "",
+            width: size.width,
+            height: size.height
+          };
+        }).filter((item) => item.href || item.thumb);
+        const reactions = [];
+        body.querySelectorAll(":scope > .reactions .reaction").forEach((rx) => {
+          const emoji = rx.querySelector(".emoji")?.textContent.trim() || "";
+          const count = Number(rx.querySelector(".count")?.textContent.trim() || "1") || 1;
+          if (emoji) reactions.push({ emoji, count });
+        });
+
+        const data = { id, date, sender, text, links, media, reactions };
+        const joined = messageNode.classList.contains("joined");
+        const shouldAttachMediaToGroup = Boolean(group) && joined && data.media.length && !data.text && !data.links.length && !data.reactions.length && group.reactions.length;
+        if (!joined || !group) {
+          flushGroup();
+          startGroup(data);
+          return;
+        }
+        if (shouldAttachMediaToGroup) {
+          appendData(group, data);
+          return;
+        }
+        flushGroup();
+        startGroup(data);
+      });
+      flushGroup();
+      return rows;
+    }
+    function parseDate(value) {
+      if (!value) return 0;
+      if (/^\d+$/.test(String(value))) return Number(value) * 1000;
+      const native = Date.parse(value);
+      if (!Number.isNaN(native)) return native;
+      const match = String(value).match(/^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
+      if (match) {
+        const [, dd, mm, yyyy, hh, min, ss = "0"] = match;
+        return new Date(Number(yyyy), Number(mm) - 1, Number(dd), Number(hh), Number(min), Number(ss)).getTime();
+      }
+      return 0;
+    }
+    function formatDate(value) {
+      const time = parseDate(value);
+      if (!time) return value || "-";
+      return new Intl.DateTimeFormat(currentLang || "zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(time));
+    }
+    function prepareMessages(messages) {
+      let topScore = 0;
+      const emojiTotals = new Map();
+      for (const msg of messages) {
+        msg.total = Number(msg.total || msg.reactions?.reduce((sum, item) => sum + item.count, 0) || 0);
+        msg.score = msg.total;
+        msg.timestamp = parseDate(msg.date);
+        msg.mediaCount = msg.media?.length || 0;
+        msg.searchText = `${msg.text || ""} ${msg.from || ""} ${msg.forwardedFrom || ""}`.toLowerCase();
+        topScore = Math.max(topScore, msg.score);
+        for (const rx of msg.reactions || []) {
+          emojiTotals.set(rx.emoji, (emojiTotals.get(rx.emoji) || 0) + rx.count);
+        }
+      }
+      state.emojiItems = Array.from(emojiTotals, ([emoji, count]) => ({ emoji, count })).sort((a, b) => b.count - a.count || a.emoji.localeCompare(b.emoji));
+      state.emojiTotal = state.emojiItems.reduce((sum, item) => sum + item.count, 0);
+      state.topScore = topScore;
+      return messages;
+    }
+    function setUnifiedChannel(handle, rerender = false) {
+      const clean = remapTelegramChannel(handle || "");
+      state.channelHandle = clean;
+      if (rerender) render();
+      return clean;
+    }
+    function messageSpecificLink(msg) {
+      const id = String(msg?.id || "");
+      for (const raw of [msg?.jumpLink, msg?.sourceLink]) {
+        const parts = telegramMessageParts(raw);
+        if (parts && parts.id === id) {
+          return parts.kind === "private" ? `https://t.me/c/${parts.channel}/${parts.id}` : `https://t.me/${parts.channel}/${parts.id}`;
+        }
+      }
+      for (const link of Array.isArray(msg?.links) ? msg.links : []) {
+        const parts = telegramMessageParts(link?.href);
+        if (!parts) continue;
+        if (parts.id !== id) continue;
+        return parts.kind === "private" ? `https://t.me/c/${parts.channel}/${parts.id}` : `https://t.me/${parts.channel}/${parts.id}`;
+      }
+      return "";
+    }
+    function unifiedLinkForMessage(msg) {
+      const handle = remapTelegramChannel(state.channelHandle || "");
+      if (handle && /^\d+$/.test(String(msg.id || ""))) return `https://t.me/${handle}/${msg.id}`;
+      return messageSpecificLink(msg) || msg?.exportLink || "";
+    }
+    function isTelegramMessageLink(link) {
+      return Boolean(telegramMessageParts(link));
+    }
+    function jumpButtonLabel(link) {
+      return isTelegramMessageLink(link) ? t("jump.openOriginal") : t("jump.openExport");
+    }
+    function applyImportResult({ source, sourceKey = "", messages, fileCount, mediaCount, statusPrefix, channelHandle = "", channelEntryLink = "" }) {
+      state.source = source || "Telegram export";
+      state.sourceKey = sourceKey || source || "Telegram export";
+      state.autoChannelHandle = remapTelegramChannel(channelHandle || "");
+      state.manualChannelHandle = getChannelOverride(state.sourceKey) || getChannelOverride(state.source);
+      setUnifiedChannel(state.manualChannelHandle || state.autoChannelHandle, false);
+      state.channelEntryLink = normalizeTelegramEntryLink(channelEntryLink) || "";
+      state.messages = prepareMessages(messages);
+      state.selectedEmoji = "__all";
+      updateSourceLabel();
+      const indexedMedia = mediaCount ?? state.mediaUrls.size;
+      setStatus(messages.length
+        ? t("import.filesIndexed", { prefix: statusPrefix || t("import.imported"), files: n(fileCount), media: n(indexedMedia) })
+        : t("import.noReactions"), !messages.length);
+      setImportNote(messages.length
+        ? t("import.ready", { messages: n(messages.length), media: n(indexedMedia) })
+        : t("import.noReactionData"));
+      render();
+      if (messages.length) setPage("viewer");
+    }
+    async function readEntryFiles(entry) {
+      const files = [];
+      if (entry.isFile) {
+        return new Promise((resolve) => { entry.file((f) => resolve([f]), () => resolve([])); });
+      }
+      if (entry.isDirectory) {
+        const reader = entry.createReader();
+        const readAll = () => new Promise((resolve) => {
+          reader.readEntries(async (entries) => {
+            if (!entries.length) { resolve([]); return; }
+            const batches = await Promise.all(entries.map(e => readEntryFiles(e)));
+            resolve(batches.flat());
+          }, () => resolve([]));
+        });
+        return readAll();
+      }
+      return files;
+    }
+
+    async function handleDropEvent(event) {
+      event.preventDefault();
+      els.drop.classList.remove("drag");
+      const items = event.dataTransfer.items;
+      if (!items) { setStatus(t("import.noReadable"), true); return; }
+      
+      // Try webkitGetAsEntry for folder support (Chrome/Safari/Edge)
+      const entries = [];
+      for (const item of items) {
+        try {
+          const entry = item.webkitGetAsEntry?.();
+          if (entry) entries.push(entry);
+        } catch (_) {}
+      }
+      
+      if (entries.length) {
+        // Folder-aware path
+        const allFiles = [];
+        for (const entry of entries) {
+          const entryFiles = await readEntryFiles(entry);
+          allFiles.push(...entryFiles);
+        }
+        if (!allFiles.length) { setStatus(t("import.noReadable"), true); return; }
+        await processDroppedFiles(allFiles, entries);
+      } else {
+        // Fallback: dataTransfer.files
+        const files = Array.from(event.dataTransfer.files || []);
+        if (!files.length) { setStatus(t("import.noReadable"), true); return; }
+        await processDroppedFiles(files, []);
+      }
+    }
+
+    async function processDroppedFiles(allFiles, entries) {
+      clearMediaUrls();
+      allFiles.forEach(rememberMediaFile);
+      const htmlFiles = allFiles.filter((f) => /\.html?$/i.test(f.name) && f.size > 0);
+      const jsonFiles = allFiles.filter((f) => /\.json$/i.test(f.name) && f.size > 0);
+      
+      if (!htmlFiles.length && !jsonFiles.length) {
+        setStatus(t("import.noReadable"), true);
+        return;
+      }
+      
+      // Determine root name from first entry or webkitRelativePath
+      let rootName = "";
+      if (entries.length === 1 && entries[0]?.isDirectory) {
+        rootName = entries[0].name;
+      } else if (allFiles[0]?.webkitRelativePath) {
+        rootName = allFiles[0].webkitRelativePath.split("/")[0];
+      }
+      
+      htmlFiles.sort((a, b) => (a.webkitRelativePath || a.name).localeCompare((b.webkitRelativePath || b.name), undefined, { numeric: true }));
+      
+      if (jsonFiles.length === 1 && !htmlFiles.length) {
+        const messages = parseJson(JSON.parse(await jsonFiles[0].text()));
+        const source = displayNameForImport("", "", rootName || jsonFiles[0].name);
+        applyImportResult({
+          source, sourceKey: rootName || jsonFiles[0].name, messages,
+          fileCount: 1, mediaCount: state.mediaUrls.size,
+          statusPrefix: t("import.imported"), channelHandle: "", channelEntryLink: "",
+        });
+        if (rootName) saveHistory(`browser-folder:${rootName}`, source, { browserOnly: true });
+        return;
+      }
+      
+      const htmlTexts = await Promise.all(htmlFiles.map(async (file) => {
+        const fileUrl = URL.createObjectURL(file);
+        state.localUrls.add(fileUrl);
+        return { file, fileUrl, text: await file.text() };
+      }));
+      
+      const sourceTitle = htmlTexts.map((item) => extractExportTitle(item.text)).find(Boolean) || "";
+      const channelHandle = inferTelegramChannelFromTexts(htmlTexts, sourceTitle, rootName);
+      const channelEntryLink = inferTelegramEntryLinkFromTexts(htmlTexts);
+      
+      let messages = [];
+      for (const item of htmlTexts) {
+        messages.push(...parseTelegramHtml(item.text, { fileUrl: item.fileUrl, fileName: item.file.name, channelHandle }));
+      }
+      
+      const fallbackSource = rootName || (htmlFiles.length > 1 ? `${htmlFiles.length} HTML files` : htmlFiles[0].name);
+      const sourceName = displayNameForImport(sourceTitle, channelHandle, fallbackSource);
+      applyImportResult({
+        source: sourceName,
+        sourceKey: rootName || fallbackSource,
+        messages,
+        fileCount: htmlFiles.length,
+        mediaCount: state.mediaUrls.size,
+        statusPrefix: t("import.imported"),
+        channelHandle,
+        channelEntryLink,
+      });
+      if (rootName) {
+        saveHistory(`browser-folder:${rootName}`, sourceName, { browserOnly: true });
+      }
+    }
+    async function loadServerPath(pathOverride = "") {
+      const override = typeof pathOverride === "string" ? pathOverride : "";
+      const rawValue = override || els.pathInput.value;
+      const paths = rawValue.split("\n").map(p => p.trim()).filter(p => p.length > 0);
+      if (!paths.length) {
+        setStatus(t("import.needPath"), true);
+        els.pathInput.focus();
+        return;
+      }
+      els.pathInput.value = rawValue.trim();
+      els.pathImportBtn.disabled = true;
+      els.browseBtn.disabled = true;
+      setStatus(t("import.scanning"));
+      try {
+        const endpoint = "/api/scan-directory";
+        const body = { path: paths[0] };
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.error || t("import.scanFail"));
+        const scans = result.scans || (result.batch ? [] : [result]);
+        let totalMessages = 0;
+        const errorMessages = [];
+        for (const scan of scans) {
+          try {
+            clearMediaUrls();
+            for (const item of scan.media || []) {
+              for (const key of item.keys || []) {
+                if (key) state.mediaUrls.set(normalizePath(key), item.url);
+              }
+            }
+            const files = (scan.files || []).filter((file) => /\.(html?|json)$/i.test(file.name));
+            if (!files.length) { errorMessages.push(scan.display_name + ": " + t("import.noServerFiles")); continue; }
+            files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+            const htmlFiles = files.filter((file) => /\.html?$/i.test(file.name));
+            const jsonFiles = files.filter((file) => /\.json$/i.test(file.name));
+            if (jsonFiles.length && files.length > 1) { errorMessages.push(scan.display_name + ": " + t("import.jsonAlone")); continue; }
+            let messages = [];
+            let channelHandle = remapTelegramChannel(scan.channel_handle || "");
+            let channelEntryLink = "";
+            if (jsonFiles.length === 1) {
+              const data = await fetch(jsonFiles[0].url).then((res) => res.json());
+              messages = parseJson(data);
+            } else {
+              const htmlTexts = await Promise.all(htmlFiles.map(async (file) => {
+                const text = await fetch(file.url).then((res) => {
+                  if (!res.ok) throw new Error(t("import.cannotRead", { file: file.name }));
+                  return res.text();
+                });
+                return { file, text };
+              }));
+              const title = scan.display_name || scan.source || htmlTexts.map((item) => extractExportTitle(item.text)).find(Boolean) || "";
+              channelHandle = channelHandle || inferTelegramChannelFromTexts(htmlTexts, title, scan.root || paths[0]);
+              channelEntryLink = inferTelegramEntryLinkFromTexts(htmlTexts);
+              for (const item of htmlTexts) messages.push(...parseTelegramHtml(item.text, { fileUrl: item.file.url, fileName: item.file.name, channelHandle }));
+            }
+            applyImportResult({
+              source: scan.display_name || scan.source || scan.root,
+              sourceKey: scan.original_root || scan.root || scan.root,
+              messages,
+              fileCount: files.length,
+              mediaCount: scan.counts?.media_files ?? state.mediaUrls.size,
+              statusPrefix: t("import.importedFromPath"),
+              channelHandle,
+              channelEntryLink,
+            });
+            totalMessages += messages.length;
+            const organizedRoot = scan.root || scan.original_root || "";
+            if (organizedRoot) {
+              els.pathInput.value = organizedRoot;
+              fetch("/api/preferences", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({last_import_path:organizedRoot})}).catch(()=>{});
+            }
+            saveHistory(organizedRoot, scan.display_name || scan.source || organizedRoot, { handle: channelHandle });
+          } catch (scanErr) {
+            errorMessages.push((scan.display_name || scan.source || "?") + ": " + (scanErr.message || String(scanErr)));
+          }
+        }
+        loadKnownImports();
+        if (scans.length > 1) {
+          const summary = `导入完成: ${scans.length} 个频道, ${totalMessages} 条消息`;
+          const errSummary = errorMessages.length ? ` (${errorMessages.length} 个失败: ${errorMessages.slice(0,3).join("; ")})` : "";
+          setStatus(summary + errSummary);
+        } else if (errorMessages.length) {
+          setStatus(errorMessages[0], true);
+          setImportNote(t("import.pathNote"));
+        }
+      } catch (error) {
+        setStatus(error.message || String(error), true);
+        setImportNote(t("import.pathNote"));
+      } finally {
+        els.pathImportBtn.disabled = false;
+        els.browseBtn.disabled = false;
+      }
+    }
+    function filteredRows() {
+      const query = els.query.value.trim().toLowerCase();
+      let rows = state.messages.filter((msg) => {
+        if (!els.includeForwarded.checked && msg.forwardedFrom) return false;
+        if (state.selectedEmoji !== "__all" && !msg.reactions.some((rx) => rx.emoji === state.selectedEmoji)) return false;
+        // In gallery mode, only show messages with media (same as emoji-filtered views)
+        if (state.selectedEmoji === "__all" && !mediaItems(msg).length && !isMatrix) return false;
+        if (!query) return true;
+        return msg.searchText.includes(query);
+      });
+      const mode = els.sortMode.value;
+      rows.sort((a, b) => {
+        const mediaDelta = b.mediaCount - a.mediaCount;
+        if (mode === "reactions") return mediaDelta || b.total - a.total || b.score - a.score;
+        if (mode === "date_desc") return mediaDelta || b.timestamp - a.timestamp;
+        if (mode === "date_asc") return mediaDelta || a.timestamp - b.timestamp;
+        return mediaDelta || b.score - a.score || b.total - a.total;
+      });
+      return rows;
+    }
+    function renderEmoji() {
+      const items = state.emojiItems;
+      const total = state.emojiTotal;
+      els.emojiList.innerHTML = "";
+      [{ emoji: "__all", count: total, label: t("common.all") }, ...items].forEach((item) => {
+        const btn = document.createElement("button");
+        btn.className = `chip${state.selectedEmoji === item.emoji ? " active" : ""}`;
+        btn.type = "button";
+        btn.dataset.emoji = item.emoji;
+        btn.innerHTML = `${esc(item.label || item.emoji)} <small>${n(item.count)}</small>`;
+        els.emojiList.appendChild(btn);
+      });
+      return { kinds: items.length, total };
+    }
+    function mediaItems(msg) {
+      const media = msg.media || [];
+      return media.map((item, mediaIndex) => {
+        const thumb = mediaUrl(item.thumb) || mediaUrl(item.href);
+        const full = mediaUrl(item.href) || thumb;
+        const width = Number(item.width || 0);
+        const height = Number(item.height || 0);
+        const aspect = width > 0 && height > 0 ? Math.max(.36, Math.min(2.4, width / height)) : 1;
+        return { thumb, full, mediaIndex, aspect };
+      }).filter((item) => item.thumb);
+    }
+    function openTelegramLink(link, button) {
+      const resolvedLink = resolveTelegramTargetUrl(link) || link;
+      if (!resolvedLink) {
+        setStatus(t("jump.noLink"), true);
+        return;
+      }
+      const opened = window.open(resolvedLink, "_blank");
+      if (button) {
+        const original = button.textContent;
+        button.textContent = t("jump.opening");
+        setTimeout(() => { button.textContent = original; }, 1000);
+      }
+      if (opened) {
+        try { opened.opener = null; } catch (_) {}
+        opened.focus();
+        setStatus(t("jump.opened", { link: resolvedLink }));
+        return;
+      }
+      const anchor = document.createElement("a");
+      anchor.href = resolvedLink;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setStatus(t("jump.popup", { link: resolvedLink }), true);
+    }
+    function activeJumpButton() {
+      return currentReel()?.querySelector("[data-jump-link]") || null;
+    }
+    function isTypingTarget(target) {
+      const tag = target?.tagName?.toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
+    }
+    function openLightbox(src) {
+      if (!src) return;
+      els.lightboxImg.src = src;
+      els.lightbox.hidden = false;
+    }
+    function closeLightbox() {
+      els.lightbox.hidden = true;
+      els.lightboxImg.removeAttribute("src");
+    }
+    const preloadState = { queued: [], queuedUrls: new Set(), active: 0, maxActive: /Mobi|Android/i.test(navigator.userAgent) ? 8 : 4, maxQueue: 60 };
+
+    function enqueueImagePreload(url) {
+      if (!url || preloadState.queuedUrls.has(url)) return;
+      // cap queue to prevent memory bloat on long scrolls
+      if (preloadState.queued.length >= preloadState.maxQueue) {
+        const old = preloadState.queued.shift();
+        preloadState.queuedUrls.delete(old);
+      }
+      preloadState.queuedUrls.add(url);
+      preloadState.queued.push(url);
+      runImagePreloadQueue();
+    }
+    function runImagePreloadQueue() {
+      while (preloadState.active < preloadState.maxActive && preloadState.queued.length) {
+        const url = preloadState.queued.shift();
+        preloadState.active += 1;
+        const image = new Image();
+        const done = () => {
+          preloadState.active -= 1;
+          runImagePreloadQueue();
+        };
+        image.onload = done;
+        image.onerror = done;
+        image.decoding = "async";
+        image.src = url;
+      }
+    }
+    function loadSlideImage(slide) {
+      if (!slide) return;
+      slide.querySelectorAll("img[data-src]").forEach((img) => {
+        img.src = img.dataset.src;
+        img.removeAttribute("data-src");
+      });
+    }
+    function preloadReelAround(reel, index) {
+      const slides = Array.from(reel?.querySelectorAll(".reel-slide") || []);
+      if (!slides.length) return;
+      const range = /Mobi|Android/i.test(navigator.userAgent) ? [0, 1, -1, 2, -2] : [0, 1, -1];
+      for (const offset of range) {
+        const target = slides[index + offset];
+        if (!target) continue;
+        loadSlideImage(target);
+        const url = target.dataset.thumb || "";
+        if (offset) enqueueImagePreload(url);
+      }
+    }
+    function preloadGalleryWindow(start, end) {
+      // preload ahead
+      for (let index = end; index < Math.min(state.rows.length, end + PRELOAD_AHEAD); index += 1) {
+        const first = mediaItems(state.rows[index])[0];
+        if (first?.thumb) enqueueImagePreload(first.thumb);
+      }
+      // preload behind (already visible but keep warm for fast scroll-back)
+      for (let index = Math.max(0, start - PRELOAD_BEHIND); index < start; index += 1) {
+        const first = mediaItems(state.rows[index])[0];
+        if (first?.thumb) enqueueImagePreload(first.thumb);
+      }
+    }
+    function renderReelMedia(msg, index) {
+      const visible = mediaItems(msg);
+      if (!visible.length) {
+        const count = msg.media?.length || 0;
+        return `<div class="reel-no-media"><div><strong>${count ? esc(t("media.photos", { count: n(count) })) : esc(t("media.noPhoto"))}</strong><span>${count ? esc(t("media.importFolder")) : esc(t("media.unsupported"))}</span></div></div>`;
+      }
+      const slides = visible.map((item, photoIndex) => {
+        const source = photoIndex < 2 ? `src="${esc(item.thumb)}"` : `data-src="${esc(item.thumb)}"`;
+        const loadMode = photoIndex < 2 ? "eager" : "lazy";
+        return `
+        <button class="reel-slide media-open" type="button" data-full="${esc(item.full)}" data-thumb="${esc(item.thumb)}" data-photo="${photoIndex}">
+          <img class="slide-bg" ${source} alt="" loading="${loadMode}" decoding="async">
+          <img class="slide-img" ${source} alt="${esc(t("media.photoAlt", { index: n(photoIndex + 1) }))}" loading="${loadMode}" decoding="async">
+        </button>
+      `;
+      }).join("");
+      const nav = visible.length > 1
+        ? `<div class="photo-nav"><button type="button" data-dir="-1" data-reel="${index}" aria-label="${esc(t("media.prevPhoto"))}"></button><button type="button" data-dir="1" data-reel="${index}" aria-label="${esc(t("media.nextPhoto"))}"></button></div>`
+        : "";
+      const controls = visible.length > 1 ? visible.map((_item, photoIndex) => `
+        <button class="media-thumb${photoIndex === 0 ? " active" : ""}" type="button" data-photo="${photoIndex}" aria-label="${esc(t("media.showPhoto", { index: n(photoIndex + 1) }))}">
+        </button>
+      `).join("") : "";
+      return `
+        <div class="media-board">
+          <div class="main-panel">
+            <div class="reel-carousel" data-photo-count="${visible.length}">
+              ${slides}
+            </div>
+            ${nav}
+          </div>
+          ${controls ? `<div class="thumb-strip">${controls}</div>` : ""}
+        </div>
+      `;
+    }
+    function renderOpenActions(msg) {
+      const link = unifiedLinkForMessage(msg);
+      if (!link) return `<div class="reel-links"><button class="source-link" type="button" disabled>${esc(t("jump.noLink"))}</button></div>`;
+      return `<div class="reel-links"><button class="source-link" type="button" data-jump-link="${esc(link)}">${jumpButtonLabel(link)}</button></div>`;
+    }
+    function matrixRows() {
+      return state.rows.filter((msg) => mediaItems(msg).length);
+    }
+    function renderReel(msg, index) {
+      const height = galleryItemHeight();
+      return `
+        <article class="reel" data-index="${index}" data-photo-index="0" style="height:${height}px;min-height:${height}px">
+          <div class="reel-media">${renderReelMedia(msg, index)}</div>
+          <div class="reel-gradient"></div>
+          <div class="reel-actions">
+            <div class="action-bubble"><div>${n(msg.score)}<small>${esc(t("media.score"))}</small></div></div>
+            <div class="action-bubble"><div>${n(msg.total)}<small>${esc(t("media.react"))}</small></div></div>
+            <div class="reel-reactions">${msg.reactions.slice(0, 4).map((rx) => `<div class="reel-rx">${esc(rx.emoji)} ${n(rx.count)}</div>`).join("")}</div>
+          </div>
+          <div class="reel-overlay">
+            <div class="reel-rank">#${index + 1}</div>
+            <div class="reel-sender">${esc(msg.from || "-")}</div>
+            <div class="reel-meta">${esc(formatDate(msg.date))}${msg.media?.length ? ` - ${esc(photoText(msg.media.length))}` : ""}</div>
+            ${renderOpenActions(msg)}
+            <div class="reel-msg">${esc(msg.text || t("media.nonText"))}</div>
+          </div>
+        </article>
+      `;
+    }
+    function galleryItemHeight() {
+      const vh = window.visualViewport?.height || window.innerHeight;
+      return Math.max(360, Math.round(els.gallery.clientHeight || vh || 720));
+    }
+    function resetVirtualState() {
+      state.virtual.start = -1;
+      state.virtual.end = -1;
+      state.matrixVirtual.rendered = 0;
+    }
+    let galleryPool = [];
+
+    function renderGallery(reset = false) {
+      if (reset) {
+        els.gallery.scrollTop = 0;
+        galleryPool.forEach(p => p.el.remove());
+        galleryPool = [];
+        state.virtual.start = -1;
+        state.virtual.end = -1;
+      }
+      if (!state.rows.length) {
+        els.gallery.innerHTML = `<div class="empty"><div><strong>${t("gallery.noDataLoaded")}</strong></div></div>`;
+        galleryPool.forEach(p => p.el.remove());
+        galleryPool = [];
+        return;
+      }
+      const itemHeight = galleryItemHeight();
+      const total = state.rows.length;
+      const firstVisible = Math.max(0, Math.floor(els.gallery.scrollTop / itemHeight));
+      const visibleCount = Math.max(1, Math.ceil(els.gallery.clientHeight / itemHeight));
+      const buffer = /Mobi|Android/i.test(navigator.userAgent) ? Math.max(8, visibleCount * 3) : 3;
+      const start = Math.max(0, firstVisible - buffer);
+      const end = Math.min(total, firstVisible + visibleCount + buffer);
+      if (state.virtual.start === start && state.virtual.end === end && state.virtual.itemHeight === itemHeight) return;
+      state.virtual = { itemHeight, start, end };
+
+      // Save scroll position, pause snap
+      const prevScroll = els.gallery.scrollTop;
+      els.gallery.style.scrollSnapType = "none";
+
+      // Remove reels outside range
+      for (let i = galleryPool.length - 1; i >= 0; i--) {
+        if (galleryPool[i].index < start || galleryPool[i].index >= end) {
+          galleryPool[i].el.remove();
+          galleryPool.splice(i, 1);
+        }
+      }
+      // Add missing reels
+      const frag = document.createDocumentFragment();
+      for (let i = start; i < end; i++) {
+        if (galleryPool.some(p => p.index === i)) continue;
+        const el = document.createElement("div");
+        el.innerHTML = renderReel(state.rows[i], i);
+        const reel = el.firstElementChild;
+        frag.appendChild(reel);
+        galleryPool.push({ index: i, el: reel });
+      }
+      // Sort pool by index for consistent DOM order
+      galleryPool.sort((a, b) => a.index - b.index);
+      // Clear gallery, insert spacer + pool + spacer
+      els.gallery.innerHTML = "";
+      const topSpacer = document.createElement("div");
+      topSpacer.className = "virtual-spacer";
+      topSpacer.style.height = (start * itemHeight) + "px";
+      els.gallery.appendChild(topSpacer);
+      for (const p of galleryPool) els.gallery.appendChild(p.el);
+      // Append any new reels from fragment
+      els.gallery.appendChild(frag);
+      const bottomSpacer = document.createElement("div");
+      bottomSpacer.className = "virtual-spacer";
+      bottomSpacer.style.height = (Math.max(0, (total - end) * itemHeight)) + "px";
+      els.gallery.appendChild(bottomSpacer);
+
+      // Restore scroll and snap
+      els.gallery.scrollTop = prevScroll;
+      els.gallery.style.scrollSnapType = "y mandatory";
+    }
+    function scheduleGalleryRender() {
+      cancelAnimationFrame(state.virtual.frame);
+      state.virtual.frame = requestAnimationFrame(() => renderGallery(false));
+    }
+
+    function renderMatrixCard(msg, index) {
+      const rank = index + 1;
+      const first = mediaItems(msg)[0];
+      const full = first?.full || "";
+      const thumb = first?.thumb || "";
+      const aspect = first?.aspect || 1;
+      const link = unifiedLinkForMessage(msg);
+      const photos = msg.mediaCount ? ` · ${photoText(msg.mediaCount)}` : "";
+      return `
+        <article class="matrix-card" style="--matrix-aspect:${aspect.toFixed(3)}">
+          <button class="matrix-media${full ? " media-open" : ""}" type="button" data-full="${esc(full)}" aria-label="${esc(t("media.previewRank", { rank: n(rank) }))}">
+            ${thumb ? `<img class="matrix-bg" src="${esc(thumb)}" alt="" loading="lazy" decoding="async"><img class="matrix-img" src="${esc(thumb)}" alt="${esc(t("media.rankAlt", { rank: n(rank) }))}" loading="lazy" decoding="async">` : ""}
+          </button>
+          <div class="matrix-info">
+            <div class="matrix-line">#${rank} ${esc(msg.from || "-")}</div>
+            <div class="matrix-meta">${esc(t("matrix.meta", { react: n(msg.total), photos }))}</div>
+            ${link ? `<button class="matrix-jump" type="button" data-jump-link="${esc(link)}">${jumpButtonLabel(link)}</button>` : `<button class="matrix-jump" type="button" disabled>${esc(t("jump.noLink"))}</button>`}
+          </div>
+        </article>
+      `;
+    }
+    function renderMatrix(reset = false) {
+      cancelAnimationFrame(state.matrixVirtual.frame);
+      if (reset) {
+        els.matrixGallery.scrollTop = 0;
+        state.matrixVirtual.rendered = 0;
+      }
+      const rows = matrixRows();
+      if (!rows.length) {
+        const emptyTitle = state.messages.length ? t("matrix.noImages") : t("matrix.noData");
+        const emptyHint = state.messages.length ? t("matrix.noImagesHint") : t("empty.loadHint");
+        els.matrixGallery.innerHTML = `<div class="empty"><div><strong>${emptyTitle}</strong><span>${emptyHint}</span></div></div>`;
+        return;
+      }
+      const nearBottom = els.matrixGallery.scrollTop + els.matrixGallery.clientHeight >= els.matrixGallery.scrollHeight - Math.max(240, els.matrixGallery.clientHeight * 1.2);
+      const current = state.matrixVirtual.rendered || 0;
+      let nextCount = reset || !current ? MATRIX_BATCH_SIZE : current;
+      if (nearBottom) nextCount += MATRIX_BATCH_SIZE;
+      nextCount = Math.min(rows.length, Math.max(MATRIX_BATCH_SIZE, nextCount));
+      if (!reset && current === nextCount) return;
+      const loaderHtml = nextCount < rows.length ? `<div class="matrix-loader">${esc(t("matrix.loadMore"))}</div>` : "";
+      const grid = els.matrixGallery.querySelector(".matrix-grid");
+      if (!reset && current && grid && nextCount > current) {
+        const cards = rows.slice(current, nextCount).map((msg, offset) => renderMatrixCard(msg, current + offset)).join("");
+        grid.insertAdjacentHTML("beforeend", cards);
+        els.matrixGallery.querySelector(".matrix-loader")?.remove();
+        if (loaderHtml) els.matrixGallery.insertAdjacentHTML("beforeend", loaderHtml);
+        state.matrixVirtual.rendered = nextCount;
+        requestAnimationFrame(() => applyImageFits(els.matrixGallery));
+        return;
+      }
+      state.matrixVirtual.rendered = nextCount;
+      const cards = rows.slice(0, nextCount).map((msg, index) => renderMatrixCard(msg, index)).join("");
+      els.matrixGallery.innerHTML = `<div class="matrix-grid">${cards}</div>${loaderHtml}`;
+      requestAnimationFrame(() => applyImageFits(els.matrixGallery));
+    }
+    function scheduleMatrixRender() {
+      cancelAnimationFrame(state.matrixVirtual.frame);
+      state.matrixVirtual.frame = requestAnimationFrame(() => renderMatrix(false));
+    }
+    function render() {
+      const emojiStats = renderEmoji();
+      if (els.messageCount) els.messageCount.textContent = n(state.messages.length);
+      if (els.reactionCount) els.reactionCount.textContent = n(emojiStats.total);
+      if (els.emojiCount) els.emojiCount.textContent = n(emojiStats.kinds);
+      if (els.topScore) els.topScore.textContent = n(state.topScore);
+      els.manualChannelBtn.disabled = !state.messages.length;
+      if (els.mobileChannelBtn) els.mobileChannelBtn.disabled = !state.messages.length;
+      state.rows = filteredRows();
+      els.exportBtn.disabled = !state.rows.length;
+      resetVirtualState();
+      // Defer gallery render by one frame so layout settles (iOS Safari viewport bug)
+      requestAnimationFrame(() => {
+        renderGallery(true);
+        renderMatrix(true);
+      });
+    }
+    function exportCsv() {
+      const lines = [["rank", "id", "date", "from", "score", "total_reactions", "reactions", "media", "text"]];
+      state.rows.forEach((msg, index) => lines.push([
+        index + 1, msg.id, formatDate(msg.date), msg.from, msg.score, msg.total,
+        msg.reactions.map((rx) => `${rx.emoji}:${rx.count}`).join(" "),
+        msg.media?.map((item) => item.href).join(" ") || "",
+        msg.text
+      ]));
+      const csv = "\ufeff" + lines.map((row) => row.map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `tg-reaction-ranking-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    function updatePhotoIndicators(reel, index, scrollThumb = true) {
+      reel.dataset.photoIndex = String(index);
+      reel.querySelectorAll(".photo-dot").forEach((dot, dotIndex) => dot.classList.toggle("active", dotIndex === index));
+      reel.querySelectorAll(".media-thumb").forEach((thumb, thumbIndex) => thumb.classList.toggle("active", thumbIndex === index));
+      if (scrollThumb) {
+        const activeThumb = reel.querySelector(`.media-thumb[data-photo="${index}"]`);
+        const strip = activeThumb?.closest(".thumb-strip");
+        if (activeThumb && strip) {
+          const thumbLeft = activeThumb.offsetLeft;
+          const thumbRight = thumbLeft + activeThumb.offsetWidth;
+          const thumbTop = activeThumb.offsetTop;
+          const thumbBottom = thumbTop + activeThumb.offsetHeight;
+          if (thumbLeft < strip.scrollLeft) strip.scrollLeft = thumbLeft;
+          if (thumbRight > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = thumbRight - strip.clientWidth;
+          if (thumbTop < strip.scrollTop) strip.scrollTop = thumbTop;
+          if (thumbBottom > strip.scrollTop + strip.clientHeight) strip.scrollTop = thumbBottom - strip.clientHeight;
+        }
+      }
+    }
+    function switchToPhoto(reel, index, behavior = "smooth") {
+      if (!reel) return;
+      const carousel = reel.querySelector(".reel-carousel");
+      const slides = Array.from(reel.querySelectorAll(".reel-slide"));
+      if (!carousel || !slides.length) return;
+      const next = Math.max(0, Math.min(slides.length - 1, Number(index) || 0));
+      preloadReelAround(reel, next);
+      updatePhotoIndicators(reel, next);
+      carousel.scrollTo({ left: carousel.clientWidth * next, behavior });
+    }
+    function switchPhoto(reel, dir) {
+      const slides = Array.from(reel?.querySelectorAll(".reel-slide") || []);
+      if (!reel || slides.length <= 1) return;
+      const current = Number(reel.dataset.photoIndex || 0);
+      const next = (current + dir + slides.length) % slides.length;
+      switchToPhoto(reel, next);
+    }
+    function imageFitFor(img) {
+      const slide = img?.closest?.(".reel-slide");
+      if (!slide || !img.naturalWidth || !img.naturalHeight) return;
+      const rect = slide.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const imageAspect = img.naturalWidth / img.naturalHeight;
+      const boxAspect = rect.width / rect.height;
+      const ratio = imageAspect / boxAspect;
+      let fit = "contain";
+      if (ratio >= 0.78 && ratio <= 1.28) {
+        fit = "cover";
+      } else if (ratio >= 0.56 && ratio <= 1.78) {
+        fit = "crop";
+      }
+      slide.dataset.fit = fit;
+      slide.dataset.imageAspect = imageAspect >= 1 ? "wide" : "tall";
+    }
+    function matrixFitFor(img) {
+      const card = img?.closest?.(".matrix-card");
+      if (!card || !img.naturalWidth || !img.naturalHeight) return;
+      const imageAspect = Math.max(.36, Math.min(2.4, img.naturalWidth / img.naturalHeight));
+      card.style.setProperty("--matrix-aspect", imageAspect.toFixed(3));
+    }
+    function applyImageFits(root = els.gallery) {
+      root.querySelectorAll(".slide-img").forEach((img) => {
+        if (img.complete && img.naturalWidth) imageFitFor(img);
+      });
+      els.matrixGallery?.querySelectorAll(".matrix-card .matrix-img").forEach((img) => {
+        if (img.complete && img.naturalWidth) matrixFitFor(img);
+      });
+    }
+    function syncCarousel(carousel) {
+      const reel = carousel.closest(".reel");
+      if (!reel) return;
+      const slides = Array.from(reel.querySelectorAll(".reel-slide"));
+      if (!slides.length) return;
+      const index = Math.max(0, Math.min(slides.length - 1, Math.round(carousel.scrollLeft / Math.max(1, carousel.clientWidth))));
+      updatePhotoIndicators(reel, index);
+    }
+    function alignCarousels(behavior = "auto") {
+      els.gallery.querySelectorAll(".reel").forEach((reel) => {
+        switchToPhoto(reel, Number(reel.dataset.photoIndex || 0), behavior);
+      });
+    }
+    function currentReel() {
+      const reels = Array.from(els.gallery.querySelectorAll(".reel"));
+      if (!reels.length) return null;
+      const center = els.gallery.scrollTop + els.gallery.clientHeight / 2;
+      return reels.reduce((best, reel) => {
+        const reelCenter = reel.offsetTop + reel.offsetHeight / 2;
+        const distance = Math.abs(center - reelCenter);
+        return !best || distance < best.distance ? { reel, distance } : best;
+      }, null)?.reel || reels[0];
+    }
+    function currentRowIndex() {
+      const height = state.virtual.itemHeight || galleryItemHeight();
+      return Math.max(0, Math.min(state.rows.length - 1, Math.round(els.gallery.scrollTop / Math.max(1, height))));
+    }
+    function scrollReel(dir) {
+      if (!state.rows.length) return;
+      const height = state.virtual.itemHeight || galleryItemHeight();
+      const targetIndex = Math.max(0, Math.min(state.rows.length - 1, currentRowIndex() + dir));
+      els.gallery.scrollTo({ top: targetIndex * height, behavior: "smooth" });
+    }
+    function setTelegramStatus(text, warn = false) {
+      els.telegramStatus.textContent = text;
+      els.telegramStatus.className = warn ? "status warn" : "status";
+    }
+    function formatBytes(bytes) {
+      const value = Number(bytes || 0);
+      if (!value) return "0 B";
+      const units = ["B", "KB", "MB", "GB"];
+      const index = Math.min(units.length - 1, Math.floor(Math.log(value) / Math.log(1024)));
+      return `${(value / (1024 ** index)).toFixed(index ? 1 : 0)} ${units[index]}`;
+    }
+    function renderTelegramProgress(job = {}) {
+      const active = Boolean(job.running || job.stage === "ready" || job.stage === "error");
+      els.telegramProgress.hidden = !active;
+      if (!active) return;
+      const messages = Number(job.messages_scanned || job.progress || 0);
+      const media = Number(job.media_downloaded || 0);
+      els.telegramProgressTitle.textContent = job.message || "正在准备下载…";
+      els.telegramProgressCount.textContent = `${messages} 条消息 · ${media} 个图片/贴纸`;
+      const current = Number(job.media_bytes || 0);
+      const total = Number(job.media_total_bytes || 0);
+      if (total > 0) {
+        els.telegramProgressBar.max = total;
+        els.telegramProgressBar.value = Math.min(current, total);
+        els.telegramProgressDetail.textContent = `${job.media_current || "媒体文件"}：${formatBytes(current)} / ${formatBytes(total)}`;
+      } else {
+        els.telegramProgressBar.max = 1;
+        els.telegramProgressBar.value = job.running ? 0 : 1;
+        els.telegramProgressDetail.textContent = job.stage === "ready" ? "下载完成，频道已自动导入。" : (job.stage === "error" ? "下载失败，请查看上方提示。" : "正在扫描新消息并准备下载媒体…");
+      }
+    }
+    async function telegramRequest(path, payload = null) {
+      const response = await fetch(path, payload === null ? { cache: "no-store" } : {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) throw new Error(data.error || "Telegram request failed");
+      return data;
+    }
+    async function refreshTelegramStatus() {
+      const data = await telegramRequest("/api/telegram/status");
+      if (data.target) els.telegramTarget.value = `@${data.target}`;
+      if (data.phone) els.telegramPhone.value = data.phone;
+      if (data.interval_minutes) els.telegramInterval.value = data.interval_minutes;
+      if (typeof data.download_media === "boolean") els.telegramMedia.checked = data.download_media;
+      const job = data.job || {};
+      renderTelegramProgress(job);
+      if (job.running) setTelegramStatus(job.message || "正在同步…");
+      else if (data.authorized) setTelegramStatus(job.message || "账号已连接；应用会自动按设定间隔同步。");
+      else if (data.configured) setTelegramStatus("API 配置已导入；填写频道和手机号后点击“开始自动同步”。");
+      // bot status
+      const bot = data.bot || {};
+      if (bot.configured) {
+        els.telegramBotStatus.textContent = bot.running ? "🤖 Bot 在线 — 转发频道链接到 Bot 即可自动下载" : `🤖 Bot 离线 — ${bot.error || "未启动"}`;
+        els.telegramBotStatus.className = bot.running ? "status" : "status status-warn";
+      } else {
+        els.telegramBotStatus.textContent = "";
+      }
+      return data;
+    }
+    async function saveBotToken() {
+      const token = els.telegramBotToken.value.trim();
+      if (!token) return;
+      try {
+        await telegramRequest("/api/telegram/bot-configure", { bot_token: token });
+        await refreshTelegramStatus();
+      } catch (error) {
+        els.telegramBotStatus.textContent = `❌ ${error.message || String(error)}`;
+        els.telegramBotStatus.className = "status status-warn";
+      }
+    }
+    async function openTelegramModal() {
+      els.telegramModal.hidden = false;
+      try { await refreshTelegramStatus(); } catch (error) { setTelegramStatus(error.message || String(error), true); }
+    }
+    function closeTelegramModal() { els.telegramModal.hidden = true; }
+    function telegramConfigPayload() {
+      const phone = els.telegramPhone.value.trim().replace(/[\s\-()]+/g, "");
+      els.telegramPhone.value = phone;
+      return { api_id: els.telegramApiId.value.trim(), api_hash: els.telegramApiHash.value.trim(), phone, target: els.telegramTarget.value.trim(), interval_minutes: els.telegramInterval.value, download_media: els.telegramMedia.checked };
+    }
+    async function saveTelegramConfig() {
+      const data = await telegramRequest("/api/telegram/configure", telegramConfigPayload());
+      els.telegramApiHash.value = "";
+      setTelegramStatus(data.authorized ? "频道设置已更新，账号已连接。" : "设置已保存，正在准备登录。");
+    }
+    async function startTelegramSync() {
+      const data = await telegramRequest("/api/telegram/sync", {});
+      setTelegramStatus(data.job?.message || "已开始同步。");
+      const poll = setInterval(async () => {
+        try {
+          const status = await refreshTelegramStatus();
+          if (!status.job?.running) clearInterval(poll);
+        } catch (_) { clearInterval(poll); }
+      }, 1500);
+    }
+    async function beginTelegramAutomation() {
+      const status = await refreshTelegramStatus();
+      if (status.authorized) return startTelegramSync();
+      await saveTelegramConfig();
+      const config = telegramConfigPayload();
+      const data = await telegramRequest("/api/telegram/send-code", { phone: config.phone });
+      setTelegramStatus(data.message + " 输入验证码后会自动开始首次同步。");
+    }
+    async function quickTelegramImport() {
+      const target = els.telegramQuickTarget.value.trim();
+      if (!target) {
+        setStatus("请先粘贴 Telegram 频道链接。", true);
+        els.telegramQuickTarget.focus();
+        return;
+      }
+      els.telegramQuickImportBtn.disabled = true;
+      setStatus("正在准备自动下载…");
+      try {
+        const data = await telegramRequest("/api/telegram/quick-import", { target });
+        if (data.target) els.telegramTarget.value = `@${data.target}`;
+        if (data.action === "login_required") {
+          await openTelegramModal();
+          setTelegramStatus(data.message);
+          els.telegramPhone.focus();
+        } else {
+          setStatus("已开始下载频道图片和表情包，完成后自动导入。");
+          const poll = setInterval(async () => {
+            try {
+              const status = await refreshTelegramStatus();
+              if (!status.job?.running) {
+                clearInterval(poll);
+                if (status.job?.stage === "ready") {
+                  await loadKnownImports();
+                  setStatus("✅ 频道图片和表情包已下载并导入。");
+                }
+              }
+            } catch (_) { clearInterval(poll); }
+          }, 1500);
+        }
+      } catch (error) {
+        setStatus(error.message || String(error), true);
+      } finally {
+        els.telegramQuickImportBtn.disabled = false;
+      }
+    }
+    els.pathImportBtn.addEventListener("click", () => loadServerPath());
+    els.telegramQuickImportBtn.addEventListener("click", quickTelegramImport);
+    els.telegramQuickTarget.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { event.preventDefault(); quickTelegramImport(); }
+    });
+    /* channel modal quick import */
+    async function channelQuickImport() {
+      const target = (els.channelQuickInput?.value || "").trim();
+      if (!target) return;
+      els.telegramQuickTarget.value = target;
+      els.channelQuickInput.value = "";
+      els.channelQuickImportBtn.disabled = true;
+      closeChannelModal();
+      await quickTelegramImport();
+      els.channelQuickImportBtn.disabled = false;
+    }
+    els.channelQuickImportBtn?.addEventListener("click", channelQuickImport);
+    els.channelQuickInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { event.preventDefault(); channelQuickImport(); }
+    });
+    els.browseBtn.addEventListener("click", async () => {
+      els.browseBtn.disabled = true;
+      try {
+        const res = await fetch("/api/pick-folder");
+        const data = await res.json().catch(() => ({}));
+        if (data.ok && data.path) {
+          els.pathInput.value = data.path;
+          loadServerPath(data.path);
+        }
+      } catch (_) {} finally {
+        els.browseBtn.disabled = false;
+      }
+    });
+    els.pathInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        loadServerPath();
+      }
+    });
+    els.importPageBtn.addEventListener("click", () => setPage("import"));
+    els.viewerPageBtn.addEventListener("click", () => setPage("viewer"));
+    els.matrixPageBtn.addEventListener("click", () => setPage("matrix"));
+    els.mobileImportPageBtn?.addEventListener("click", () => setPage("import"));
+    els.mobileViewerPageBtn?.addEventListener("click", () => setPage("viewer"));
+    els.mobileMatrixPageBtn?.addEventListener("click", () => setPage("matrix"));
+    els.mobileChannelBtn?.addEventListener("click", openChannelModal);
+    els.viewerToggle.addEventListener("click", () => els.viewerControls.classList.toggle("open"));
+    els.themeBtn.addEventListener("click", toggleTheme);
+    els.languageSelect.addEventListener("change", () => setLanguage(els.languageSelect.value));
+    els.manualChannelBtn.addEventListener("click", openChannelModal);
+    els.telegramSyncBtn.addEventListener("click", openTelegramModal);
+    els.telegramCancelBtn.addEventListener("click", closeTelegramModal);
+    els.telegramModalBackdrop.addEventListener("click", closeTelegramModal);
+    els.telegramSaveBtn.addEventListener("click", async () => { try { await saveTelegramConfig(); } catch (error) { setTelegramStatus(error.message || String(error), true); } });
+    els.telegramSendCodeBtn.addEventListener("click", async () => { try { await beginTelegramAutomation(); } catch (error) { setTelegramStatus(error.message || String(error), true); } });
+    els.telegramVerifyCodeBtn.addEventListener("click", async () => { try { const data = await telegramRequest("/api/telegram/verify-code", { code: els.telegramCode.value.trim() }); setTelegramStatus(data.message); } catch (error) { setTelegramStatus(error.message || String(error), true); } });
+    els.telegramVerifyPasswordBtn.addEventListener("click", async () => { try { const data = await telegramRequest("/api/telegram/verify-password", { password: els.telegramPassword.value }); setTelegramStatus(data.message); } catch (error) { setTelegramStatus(error.message || String(error), true); } });
+    els.telegramSyncNowBtn.addEventListener("click", async () => { try { await beginTelegramAutomation(); } catch (error) { setTelegramStatus(error.message || String(error), true); } });
+    els.telegramBotToken.addEventListener("change", saveBotToken);
+    els.channelApplyBtn.addEventListener("click", applyManualChannel);
+    els.channelClearBtn.addEventListener("click", clearManualChannel);
+    els.channelCancelBtn.addEventListener("click", closeChannelModal);
+    els.channelModalBackdrop.addEventListener("click", closeChannelModal);
+    els.channelUrlInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyManualChannel();
+      }
+    });
+    els.exportBtn.addEventListener("click", exportCsv);
+    els.closeBtn.addEventListener("click", async () => {
+      try { await fetch("/__shutdown", { method: "POST" }); } catch (_) {}
+      window.close();
+      setStatus(t("app.shutdown"));
+    });
+    [els.includeForwarded, els.query, els.sortMode].forEach((el) => {
+      el.addEventListener("input", render);
+      el.addEventListener("change", render);
+    });
+    els.emojiList.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-emoji]");
+      if (!btn) return;
+      state.selectedEmoji = btn.dataset.emoji;
+      render();
+    });
+    els.historyList.addEventListener("click", (event) => {
+      if (event.target.closest("[data-history-drag]")) return;
+      const deleter = event.target.closest("[data-history-delete]");
+      if (deleter) {
+        event.preventDefault();
+        event.stopPropagation();
+        deleteHistoryItem(deleter.dataset.historyDelete);
+        return;
+      }
+      const favorite = event.target.closest("[data-history-favorite]");
+      if (favorite) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleHistoryFavorite(favorite.dataset.historyFavorite);
+        return;
+      }
+      const mover = event.target.closest("[data-history-move]");
+      if (mover) {
+        event.preventDefault();
+        event.stopPropagation();
+        moveHistoryItem(mover.dataset.historyPath, mover.dataset.historyMove);
+        return;
+      }
+      const btn = event.target.closest("[data-history-path]");
+      if (!btn) return;
+      loadServerPath(btn.dataset.historyPath);
+    });
+    let historyDragPath = "";
+    function clearHistoryDragState() {
+      els.historyList.querySelectorAll(".dragging, .drag-over").forEach((node) => node.classList.remove("dragging", "drag-over"));
+      historyDragPath = "";
+    }
+    els.historyList.addEventListener("dragstart", (event) => {
+      const handle = event.target.closest("[data-history-drag]");
+      if (!handle) return;
+      historyDragPath = handle.dataset.historyDrag || "";
+      if (!historyDragPath) return;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", historyDragPath);
+      handle.closest(".history-item")?.classList.add("dragging");
+    });
+    els.historyList.addEventListener("dragover", (event) => {
+      const item = event.target.closest(".history-item[data-history-path]");
+      if (!item || !historyDragPath || normalizeHistoryKey(item.dataset.historyPath) === normalizeHistoryKey(historyDragPath)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      els.historyList.querySelectorAll(".drag-over").forEach((node) => {
+        if (node !== item) node.classList.remove("drag-over");
+      });
+      item.classList.add("drag-over");
+    });
+    els.historyList.addEventListener("dragleave", (event) => {
+      const item = event.target.closest(".history-item[data-history-path]");
+      if (item && !item.contains(event.relatedTarget)) item.classList.remove("drag-over");
+    });
+    els.historyList.addEventListener("drop", (event) => {
+      const item = event.target.closest(".history-item[data-history-path]");
+      if (!item || !historyDragPath) {
+        clearHistoryDragState();
+        return;
+      }
+      event.preventDefault();
+      const rect = item.getBoundingClientRect();
+      const placeAfter = event.clientY > rect.top + rect.height / 2;
+      reorderHistoryByDrop(historyDragPath, item.dataset.historyPath, placeAfter);
+      clearHistoryDragState();
+    });
+    els.historyList.addEventListener("dragend", clearHistoryDragState);
+    els.refreshImportsBtn.addEventListener("click", loadKnownImports);
+    els.channelSearch.addEventListener("input", renderHistory);
+    els.gallery.addEventListener("click", (event) => {
+      const jump = event.target.closest("[data-jump-link]");
+      if (jump) {
+        event.preventDefault();
+        openTelegramLink(jump.dataset.jumpLink, jump);
+        return;
+      }
+      const media = event.target.closest(".media-open");
+      if (media) {
+        event.preventDefault();
+        openLightbox(media.dataset.full);
+        return;
+      }
+      const thumb = event.target.closest(".media-thumb");
+      if (thumb) {
+        switchToPhoto(thumb.closest(".reel"), Number(thumb.dataset.photo || 0));
+        return;
+      }
+      const button = event.target.closest(".photo-nav button");
+      if (!button) return;
+      const reel = button.closest(".reel");
+      switchPhoto(reel, Number(button.dataset.dir || 1));
+    });
+    els.gallery.addEventListener("load", (event) => {
+      if (event.target.classList?.contains("slide-img")) imageFitFor(event.target);
+    }, true);
+    els.matrixGallery.addEventListener("click", (event) => {
+      const jump = event.target.closest("[data-jump-link]");
+      if (jump) {
+        event.preventDefault();
+        openTelegramLink(jump.dataset.jumpLink, jump);
+        return;
+      }
+      const media = event.target.closest(".media-open");
+      if (!media) return;
+      openLightbox(media.dataset.full);
+    });
+    els.matrixGallery.addEventListener("load", (event) => {
+      if (event.target.closest?.(".matrix-card")) matrixFitFor(event.target);
+    }, true);
+    els.matrixGallery.addEventListener("error", (event) => {
+      const img = event.target;
+      const card = img?.closest?.(".matrix-card");
+      if (card) card.hidden = true;
+    }, true);
+    els.lightboxBackdrop.addEventListener("click", closeLightbox);
+    els.gallery.addEventListener("scroll", (event) => {
+      if (event.target === els.gallery) scheduleGalleryRender();
+    }, true);
+    els.matrixGallery.addEventListener("scroll", scheduleMatrixRender);
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !els.channelModal.hidden) {
+        closeChannelModal();
+        return;
+      }
+      if (event.key === "Escape" && !els.lightbox.hidden) {
+        closeLightbox();
+        return;
+      }
+      if (els.viewerPage.hidden) return;
+      if (event.key === "Enter" && !isTypingTarget(event.target)) {
+        const button = activeJumpButton();
+        if (button) {
+          event.preventDefault();
+          openTelegramLink(button.dataset.jumpLink, button);
+        }
+      }
+      if (event.key === "ArrowDown") { event.preventDefault(); scrollReel(1); }
+      if (event.key === "ArrowUp") { event.preventDefault(); scrollReel(-1); }
+      if (event.key === "ArrowRight") { event.preventDefault(); const reel = currentReel(); if (reel) switchPhoto(reel, 1); }
+      if (event.key === "ArrowLeft") { event.preventDefault(); const reel = currentReel(); if (reel) switchPhoto(reel, -1); }
+      if (event.key === "Escape") els.viewerControls.classList.remove("open");
+    });
+
+    fetch("/api/preferences").then(r=>r.json()).then(prefs=>{
+      if (prefs && prefs.last_import_path) {
+        els.pathInput.value = prefs.last_import_path;
+      }
+    }).catch(()=>{});
+    setTheme(localStorage.getItem("tgRankerTheme") || "dark");
+    setLanguage(localStorage.getItem(LANGUAGE_KEY) || navigator.language, false);
+    loadChannelPrefs();
+    loadHistory();  // renders from cache, then syncs with server
+    // Poll server every 3s to pick up imports from other devices
+    let pollTimer = setInterval(() => {
+      if (!els.importPage.hidden) loadKnownImports();
+    }, 3000);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) loadKnownImports();
+    });
+    let resizeFrame = 0;
+    function handleResize() {
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => {
+        state.virtual.itemHeight = 0;
+        renderGallery(false);
+        renderMatrix(false);
+        applyImageFits();
+      });
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    if ("ResizeObserver" in window && els.topbar) {
+      new ResizeObserver(handleResize).observe(els.topbar);
+    }
+  </script>
+</body>
+</html>

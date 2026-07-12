@@ -1,0 +1,334 @@
+"""Local Telegram user-account login and incremental channel synchronisation."""
+
+import asyncio
+import json
+import os
+import re
+import threading
+import time
+from pathlib import Path
+
+
+class TelegramSyncService:
+    def __init__(self, base_dir, archive_root, safe_folder_name, save_preferences):
+        self.base_dir = Path(base_dir)
+        self.archive_root = Path(archive_root)
+        self.safe_folder_name = safe_folder_name
+        self.save_preferences = save_preferences
+        self.config_file = self.base_dir / "telegram-sync.json"
+        self.state_file = self.base_dir / "telegram-sync-state.json"
+        self.session_file = self.base_dir / "telegram-user.session"
+        self.lock = threading.Lock()
+        self.pending = {}
+        self.job = {"running": False, "stage": "idle", "message": "Not connected", "progress": 0, "total": 0, "messages_scanned": 0, "media_downloaded": 0, "media_current": "", "media_bytes": 0, "media_total_bytes": 0, "updated": 0}
+        self.timer = None
+        self._last_progress_update = 0.0
+
+    def _read_json(self, path, fallback):
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return fallback
+
+    def _write_json(self, path, data):
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(tmp, path)
+        try:
+            path.chmod(0o600)
+        except OSError:
+            pass
+
+    def config(self):
+        return self._read_json(self.config_file, {})
+
+    def public_status(self):
+        with self.lock:
+            job = dict(self.job)
+        config = self.config()
+        bot_info = self.bot_status()
+        return {
+            "ok": True,
+            "configured": bool(config.get("api_id") and config.get("api_hash")),
+            "authorized": self.session_file.exists(),
+            "target": config.get("target", ""),
+            "phone": config.get("phone", ""),
+            "interval_minutes": config.get("interval_minutes", 15),
+            "download_media": bool(config.get("download_media", True)),
+            "job": job,
+            "bot": bot_info,
+        }
+
+    # ── Bot listener ────────────────────────────────────────────
+
+    def bot_status(self):
+        config = self.config()
+        bot_token = config.get("bot_token", "")
+        active = getattr(self, "_bot_listener", None)
+        return {
+            "configured": bool(bot_token),
+            "running": active is not None and active.status["running"],
+            "error": active.status["error"] if active else "",
+            "offset": active.status["offset"] if active else 0,
+        }
+
+    def configure_bot(self, token):
+        token = (token or "").strip()
+        config = self.config()
+        config["bot_token"] = token
+        self._write_json(self.config_file, config)
+        self.stop_bot()
+        if token:
+            self.start_bot()
+        return self.public_status()
+
+    def start_bot(self):
+        config = self.config()
+        token = config.get("bot_token", "")
+        if not token:
+            return
+        self.stop_bot()
+        from telegram_bot import TelegramBotListener
+        self._bot_listener = TelegramBotListener(token, self)
+        self._bot_listener.start()
+
+    def stop_bot(self):
+        active = getattr(self, "_bot_listener", None)
+        if active:
+            active.stop()
+        self._bot_listener = None
+
+    def resume_schedule(self):
+        """Resume background services after restart."""
+        config = self.config()
+        # auto-start bot if configured
+        if config.get("bot_token"):
+            threading.Timer(3, self.start_bot).start()
+
+    def configure(self, body):
+        existing = self.config()
+        api_id = str(body.get("api_id", "")).strip() or str(existing.get("api_id", "")).strip()
+        api_hash = str(body.get("api_hash", "")).strip() or str(existing.get("api_hash", "")).strip()
+        target = self.normalize_target(body.get("target", "")) or self.normalize_target(existing.get("target", ""))
+        if not api_id.isdigit() or not re.fullmatch(r"[0-9a-fA-F]{32}", api_hash):
+            raise ValueError("A valid Telegram API ID and API hash are required")
+        if not re.fullmatch(r"[A-Za-z0-9_]{3,}|-?\d+", target):
+            raise ValueError("Enter a public channel username, for example @telegram")
+        try:
+            interval = max(5, min(1440, int(body.get("interval_minutes", existing.get("interval_minutes", 15)))))
+        except (TypeError, ValueError):
+            interval = 15
+        config = {
+            "api_id": int(api_id), "api_hash": api_hash, "target": target,
+            "interval_minutes": interval, "download_media": bool(body.get("download_media", existing.get("download_media", True))),
+            "phone": str(body.get("phone", "")).strip() or str(existing.get("phone", "")).strip(),
+            "bot_token": existing.get("bot_token", ""),
+        }
+        self._write_json(self.config_file, config)
+        return self.public_status()
+
+    @staticmethod
+    def normalize_target(value):
+        raw = str(value or "").strip()
+        if not raw:
+            return ""
+        raw = re.sub(r"^https?://", "", raw, flags=re.IGNORECASE).strip("/")
+        raw = re.sub(r"^(?:www\.)?(?:t\.me|telegram\.me)/", "", raw, flags=re.IGNORECASE)
+        raw = re.sub(r"^s/", "", raw, flags=re.IGNORECASE)
+        raw = raw.split("/", 1)[0].lstrip("@").strip()
+        return raw
+
+    def _client(self):
+        try:
+            from telethon import TelegramClient
+        except ImportError as exc:
+            raise RuntimeError("Telegram support is unavailable. Reinstall the application.") from exc
+        config = self.config()
+        if not config.get("api_id") or not config.get("api_hash"):
+            raise ValueError("Save the Telegram API configuration first")
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        return TelegramClient(str(self.session_file), int(config["api_id"]), config["api_hash"])
+
+    def send_code(self, phone):
+        phone = re.sub(r"[\s\-()]+", "", str(phone or "").strip())
+        if not re.fullmatch(r"\+\d{6,20}", phone):
+            raise ValueError("Use international format, for example +8613800000000")
+        config = self.config()
+        if config.get("phone") != phone:
+            config["phone"] = phone
+            self._write_json(self.config_file, config)
+        return asyncio.run(self._send_code(phone))
+
+    async def _send_code(self, phone):
+        client = self._client()
+        try:
+            await client.connect()
+            sent = await client.send_code_request(phone)
+            self.pending = {"phone": phone, "hash": sent.phone_code_hash}
+            return {"ok": True, "stage": "code", "message": "Verification code sent"}
+        finally:
+            await client.disconnect()
+
+    def verify_code(self, code):
+        if not self.pending.get("phone") or not self.pending.get("hash"):
+            raise ValueError("Request a verification code first")
+        return asyncio.run(self._verify_code(str(code or "").strip()))
+
+    async def _verify_code(self, code):
+        from telethon.errors import SessionPasswordNeededError
+        client = self._client()
+        try:
+            await client.connect()
+            try:
+                await client.sign_in(self.pending["phone"], code, phone_code_hash=self.pending["hash"])
+            except SessionPasswordNeededError:
+                return {"ok": True, "stage": "password", "message": "Two-step verification password required"}
+            self.pending = {}
+            threading.Timer(0.2, self.start_sync).start()
+            return {"ok": True, "stage": "ready", "message": "Telegram account connected"}
+        finally:
+            await client.disconnect()
+
+    def verify_password(self, password):
+        if not self.pending.get("phone"):
+            raise ValueError("Request a verification code first")
+        return asyncio.run(self._verify_password(str(password or "")))
+
+    async def _verify_password(self, password):
+        client = self._client()
+        try:
+            await client.connect()
+            await client.sign_in(password=password)
+            self.pending = {}
+            threading.Timer(0.2, self.start_sync).start()
+            return {"ok": True, "stage": "ready", "message": "Telegram account connected"}
+        finally:
+            await client.disconnect()
+
+    def start_sync(self):
+        with self.lock:
+            if self.job["running"]:
+                return self.public_status()
+            self.job.update({"running": True, "stage": "starting", "message": "Preparing Telegram sync", "progress": 0, "total": 0, "messages_scanned": 0, "media_downloaded": 0, "media_current": "", "media_bytes": 0, "media_total_bytes": 0, "updated": int(time.time())})
+        threading.Thread(target=self._run_sync, daemon=True).start()
+        return self.public_status()
+
+    def quick_import(self, target):
+        """Accept one pasted Telegram link and either start import or request one-time login."""
+        self.configure({"target": target})
+        if self.session_file.exists():
+            result = self.start_sync()
+            result["action"] = "syncing"
+            return result
+        result = self.public_status()
+        result["action"] = "login_required"
+        result["message"] = "首次使用需要登录 Telegram；验证后会自动继续导入这个频道。"
+        return result
+
+    def _set_job(self, **values):
+        with self.lock:
+            self.job.update(values)
+            self.job["updated"] = int(time.time())
+
+    def _run_sync(self):
+        try:
+            asyncio.run(self._sync())
+        except Exception as exc:
+            self._set_job(running=False, stage="error", message=str(exc))
+        else:
+            self._set_job(running=False, stage="ready", message="Sync complete")
+
+    @staticmethod
+    def _reaction_counts(message):
+        results = getattr(getattr(message, "reactions", None), "results", None) or []
+        counts = []
+        for item in results:
+            emoji = getattr(getattr(item, "reaction", None), "emoticon", "")
+            if emoji:
+                counts.append({"emoji": emoji, "count": int(getattr(item, "count", 0) or 0)})
+        return counts
+
+    async def _sync(self):
+        config = self.config()
+        client = self._client()
+        try:
+            await client.connect()
+            if not await client.is_user_authorized():
+                raise RuntimeError("Telegram login has expired. Connect the account again.")
+            self._set_job(stage="resolving", message="Resolving channel")
+            entity = await client.get_entity(config["target"])
+            title = getattr(entity, "title", "") or config["target"]
+            username = getattr(entity, "username", "") or config["target"]
+            folder = self.archive_root / self.safe_folder_name(f"{title} @{username}")
+            media_dir = folder / "media"
+            folder.mkdir(parents=True, exist_ok=True)
+            state = self._read_json(self.state_file, {"channels": {}})
+            channels = state.setdefault("channels", {})
+            key = str(getattr(entity, "id", username))
+            checkpoint = int(channels.get(key, {}).get("last_id", 0) or 0)
+            data_file = folder / "result.json"
+            existing = self._read_json(data_file, {"name": title, "messages": []})
+            records = {int(item.get("id", 0) or 0): item for item in existing.get("messages", []) if str(item.get("id", "")).isdigit()}
+            self._set_job(stage="syncing", message="Scanning channel messages", progress=0, total=0, messages_scanned=0, media_downloaded=0)
+            downloaded = 0
+            scanned = 0
+            media_downloaded = 0
+            media_dir = folder / "media"
+            if config.get("download_media"):
+                media_dir.mkdir(parents=True, exist_ok=True)
+
+            async for message in client.iter_messages(entity, min_id=checkpoint, reverse=True):
+                if not message or not message.id:
+                    continue
+                scanned += 1
+                msg_media = getattr(message, "media", None)
+                has_media = False
+                if msg_media is not None:
+                    mt = type(msg_media).__name__
+                    if mt == "MessageMediaPhoto":
+                        has_media = True
+                    elif mt == "MessageMediaDocument":
+                        doc = getattr(msg_media, "document", None)
+                        attrs = getattr(doc, "attributes", []) if doc else []
+                        has_media = any(type(a).__name__ == "DocumentAttributeSticker" for a in attrs)
+                if msg_media is not None and not has_media:
+                    checkpoint = max(checkpoint, int(message.id))
+                    continue
+                link = f"https://t.me/{username}/{message.id}" if username else ""
+                media = []
+                if has_media and config.get("download_media"):
+                    media_name = str(getattr(getattr(message, "file", None), "name", "") or f"message-{message.id}")
+                    def _progress(current, total):
+                        now = time.monotonic()
+                        if current < total and now - self._last_progress_update < 0.15:
+                            return
+                        self._last_progress_update = now
+                        self._set_job(stage="downloading_media", message=f"Downloading {media_downloaded+1}", messages_scanned=scanned, media_downloaded=media_downloaded, media_current=media_name, media_bytes=int(current or 0), media_total_bytes=int(total or 0))
+                    try:
+                        path = await client.download_media(message, file=str(media_dir), progress_callback=_progress)
+                        if path:
+                            media.append({"href": str(Path(path).relative_to(folder))})
+                            media_downloaded += 1
+                    except Exception:
+                        pass
+                records[int(message.id)] = {
+                    "id": message.id, "date": message.date.isoformat() if message.date else "",
+                    "from": getattr(getattr(message, "sender", None), "first_name", "") or title,
+                    "text": message.message or "", "reactions": self._reaction_counts(message),
+                    "media": media, "source_link": link,
+                }
+                checkpoint = max(checkpoint, int(message.id))
+                downloaded += 1
+                self._set_job(stage="syncing", message="Scanning channel messages", progress=downloaded, messages_scanned=scanned, media_downloaded=media_downloaded, media_current="", media_bytes=0, media_total_bytes=0)
+
+            payload = {"name": title, "type": "channel", "messages": [records[k] for k in sorted(records)]}
+            self._write_json(data_file, payload)
+            channels[key] = {"last_id": checkpoint, "path": str(folder), "target": username, "updated": int(time.time())}
+            self._write_json(self.state_file, state)
+            prefs = self._read_json(self.base_dir / "preferences.json", {})
+            prefs["last_import_path"] = str(folder)
+            self.save_preferences(prefs)
+            self._set_job(stage="ready", message=f"Imported {downloaded} messages and {media_downloaded} media files", progress=downloaded, total=downloaded, messages_scanned=scanned, media_downloaded=media_downloaded, media_current="", media_bytes=0, media_total_bytes=0)
+        finally:
+            await client.disconnect()

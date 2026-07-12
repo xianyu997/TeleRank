@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="140" y1="130" x2="900" y2="920" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#12182b"/>
+      <stop offset="1" stop-color="#020510"/>
+    </linearGradient>
+    <linearGradient id="f1" x1="250" y1="160" x2="770" y2="680" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#654cff"/>
+      <stop offset="1" stop-color="#21def0"/>
+    </linearGradient>
+    <linearGradient id="f2" x1="720" y1="190" x2="360" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#a767ff"/>
+      <stop offset="1" stop-color="#2e75ff"/>
+    </linearGradient>
+    <linearGradient id="f3" x1="720" y1="260" x2="490" y2="680" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#28d8ff"/>
+      <stop offset="1" stop-color="#245bff"/>
+    </linearGradient>
+    <linearGradient id="f4" x1="720" y1="650" x2="480" y2="850" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3b35ff"/>
+      <stop offset="1" stop-color="#871cff"/>
+    </linearGradient>
+    <linearGradient id="f5" x1="260" y1="650" x2="540" y2="820" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14f0d5"/>
+      <stop offset="1" stop-color="#3e48ff"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx=".28" cy=".22" r=".42">
+      <stop stop-color="#4ce8ff" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#4ce8ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx=".76" cy=".73" r=".44">
+      <stop stop-color="#7b5cff" stop-opacity=".36"/>
+      <stop offset="1" stop-color="#7b5cff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="76" y="76" width="872" height="872" rx="240" fill="#000" opacity=".34"/>
+  <rect x="76" y="76" width="872" height="872" rx="240" fill="url(#tile)"/>
+  <rect x="76" y="76" width="872" height="872" rx="240" fill="url(#glowA)"/>
+  <rect x="76" y="76" width="872" height="872" rx="240" fill="url(#glowB)"/>
+  <path d="M512 148 773 326 721 655 512 864 301 655 251 326Z" fill="#000" opacity=".28" transform="translate(0 36)"/>
+  <path d="M251 326 512 148 512 517Z" fill="url(#f1)"/>
+  <path d="M512 148 773 326 512 517Z" fill="url(#f2)"/>
+  <path d="M773 326 721 655 512 517Z" fill="url(#f3)"/>
+  <path d="M721 655 512 864 512 517Z" fill="url(#f4)"/>
+  <path d="M512 864 301 655 512 517Z" fill="url(#f5)"/>
+  <path d="M301 655 251 326 512 517Z" fill="#1e2d86"/>
+  <path d="M512 148 773 326 721 655 512 864 301 655 251 326Z" fill="none" stroke="#e5f7ff" stroke-opacity=".48" stroke-width="24" stroke-linejoin="round"/>
+  <path d="M512 353 637 517 512 691 387 517Z" fill="#071226" stroke="#a0f4ff" stroke-opacity=".44" stroke-width="18" stroke-linejoin="round"/>
+  <path d="M512 425 538 494 609 517 538 543 512 614 486 543 415 517 486 494Z" fill="#ecfeff" stroke="#4de4ff" stroke-opacity=".74"/>
+  <circle cx="696" cy="377" r="35" fill="#89f7ff"/>
+  <circle cx="733" cy="517" r="28" fill="#fff"/>
+  <circle cx="667" cy="671" r="24" fill="#8a75ff"/>
+</svg>
