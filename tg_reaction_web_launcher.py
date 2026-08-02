@@ -25,7 +25,7 @@ if sys.platform == "darwin":
 
 APP_FILE = "tg_reaction_web.html"
 PREFERRED_PORT = 1717
-APP_VERSION = "2026-08-02-ux-polish"
+APP_VERSION = "2026-08-02-motion-polish"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
 INVALID_NAME_CHARS = '<>:"/\\|?*' if os.name == "nt" else ':/'
 

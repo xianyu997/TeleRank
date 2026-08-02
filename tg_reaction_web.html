@@ -365,6 +365,15 @@
       -webkit-backdrop-filter: var(--glass-blur);
       animation: panelIn var(--motion) var(--ease-pop);
     }
+    .modal-backdrop, .lightbox-backdrop { opacity: 0; transition: opacity var(--motion) var(--ease-out); }
+    .modal.open .modal-backdrop, .lightbox.open .lightbox-backdrop { opacity: 1; }
+    .modal.closing .modal-backdrop, .lightbox.closing .lightbox-backdrop { opacity: 0; }
+    .modal.closing .modal-panel, .lightbox.closing .lightbox-img {
+      animation: none;
+      opacity: 0;
+      transform: translateY(10px) scale(.97);
+      transition: opacity var(--motion) var(--ease-out), transform var(--motion) var(--ease-pop);
+    }
     .modal-head {
       display: flex;
       align-items: center;
@@ -400,6 +409,7 @@
     }
     .page[hidden] { display: none; }
     .page-enter { animation: pageIn var(--motion) var(--ease-pop); }
+    .page-exit { animation: pageOut var(--motion-fast) var(--ease-out) forwards; }
     .viewer-layout {
       position: relative;
       display: grid;
@@ -861,6 +871,7 @@
       scrollbar-width: none;
     }
     .gallery::-webkit-scrollbar { width: 0; height: 0; }
+    .gallery { overscroll-behavior: contain; }
     .reel {
       scroll-snap-align: start;
       scroll-snap-stop: normal;
@@ -891,6 +902,7 @@
         linear-gradient(180deg, color-mix(in srgb, var(--viewer-bg) 88%, transparent), var(--viewer-bg));
     }
     .matrix-gallery::-webkit-scrollbar { width: 0; height: 0; }
+    .matrix-gallery { overscroll-behavior: contain; }
     .matrix-grid {
       column-width: clamp(150px, 18vw, 280px);
       column-gap: clamp(8px, 1.1vmin, 14px);
@@ -1412,6 +1424,9 @@
       from { opacity: .001; transform: translateY(8px) scale(.985); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
+    @keyframes pageOut {
+      to { opacity: 0; transform: translateY(-6px); }
+    }
 
     @media (prefers-reduced-motion: reduce) {
       *,
@@ -1571,7 +1586,8 @@
         backdrop-filter: var(--glass-blur);
         -webkit-backdrop-filter: var(--glass-blur);
       }
-      .mobile-nav .btn { min-height: 42px; border-radius: 10px; transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out); }
+      .mobile-nav .btn { min-height: 42px; border-radius: 10px; transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-pop); }
+      .mobile-nav .btn:active { transform: scale(.96); }
       .mobile-nav .btn.active { background: var(--brand); color: var(--button-text); box-shadow: var(--button-shadow); }
       .mobile-nav #mobileChannelBtn { font-size: 12px; }
       main { padding: 12px max(12px, env(safe-area-inset-right)) calc(68px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
@@ -2128,6 +2144,8 @@
         "import.noServerFiles": "本地扫描器没有返回可读取的消息导出文件。",
         "import.jsonAlone": "存在 JSON 导出时，需要单独导入。",
         "import.cannotRead": "无法读取 {file}",
+        "import.reading": "正在读取导出文件 {current}/{total}：{name}",
+        "import.parsing": "正在解析 {current}/{total}…",
         "import.stored": "已从 {source} 导入。已保存到 {root}{method}。",
         "import.pathNote": "路径导入需要 EXE 本地服务正在运行。",
         "jump.noLink": "没有可打开的具体链接。",
@@ -2241,6 +2259,8 @@
         "import.noServerFiles": "本機掃描器沒有返回可讀取的訊息匯出檔案。",
         "import.jsonAlone": "存在 JSON 匯出時，需要單獨匯入。",
         "import.cannotRead": "無法讀取 {file}",
+        "import.reading": "正在讀取匯出檔案 {current}/{total}：{name}",
+        "import.parsing": "正在解析 {current}/{total}…",
         "import.stored": "已從 {source} 匯入。已儲存到 {root}{method}。",
         "import.pathNote": "路徑匯入需要 EXE 本機服務正在執行。",
         "jump.noLink": "沒有可開啟的具體連結。",
@@ -2354,6 +2374,8 @@
         "import.noServerFiles": "No readable message export files returned by the local scanner.",
         "import.jsonAlone": "When a JSON export is present, import it alone.",
         "import.cannotRead": "Cannot read {file}",
+        "import.reading": "Reading export file {current}/{total}: {name}",
+        "import.parsing": "Parsing {current}/{total}…",
         "import.stored": "Imported from {source}. Stored at {root}{method}.",
         "import.pathNote": "Path import works when the EXE local server is running.",
         "jump.noLink": "No original message link is available.",
@@ -2498,34 +2520,66 @@
     function setImportNote(text) {
       if (els.importNote) els.importNote.textContent = text;
     }
+    const MOTION_CLOSE_MS = 260;
+    let _pageSwitchTimer = null;
+    function showModal(el) {
+      el.classList.remove("closing");
+      el.hidden = false;
+      requestAnimationFrame(() => el.classList.add("open"));
+    }
+    function hideModal(el) {
+      if (el.hidden) return;
+      el.classList.remove("open");
+      el.classList.add("closing");
+      setTimeout(() => {
+        el.classList.remove("closing");
+        el.hidden = true;
+      }, MOTION_CLOSE_MS);
+    }
     function setPage(page) {
+      if (_pageSwitchTimer) { clearTimeout(_pageSwitchTimer); _pageSwitchTimer = null; }
       if ((page === "viewer" || page === "matrix") && !state.messages.length) {
         render();
       }
       const isImport = page === "import";
       const isViewer = page === "viewer";
       const isMatrix = page === "matrix";
-      els.importPage.hidden = !isImport;
-      els.viewerPage.hidden = !isViewer;
-      els.matrixPage.hidden = !isMatrix;
-      els.importPageBtn.classList.toggle("secondary", !isImport);
-      els.viewerPageBtn.classList.toggle("secondary", !isViewer);
-      els.matrixPageBtn.classList.toggle("secondary", !isMatrix);
-      els.mobileImportPageBtn?.classList.toggle("active", isImport);
-      els.mobileViewerPageBtn?.classList.toggle("active", isViewer);
-      els.mobileMatrixPageBtn?.classList.toggle("active", isMatrix);
-      els.mobileChannelBtn?.classList.toggle("active", false);
+      const pages = [els.importPage, els.viewerPage, els.matrixPage];
       const activePage = isImport ? els.importPage : (isViewer ? els.viewerPage : els.matrixPage);
-      [els.importPage, els.viewerPage, els.matrixPage].forEach((node) => node.classList.remove("page-enter"));
-      if (activePage) {
-        void activePage.offsetWidth;
-        activePage.classList.add("page-enter");
+      if (!activePage.hidden) return;
+      const outgoing = pages.find((node) => !node.hidden);
+      const finish = () => {
+        els.importPage.hidden = !isImport;
+        els.viewerPage.hidden = !isViewer;
+        els.matrixPage.hidden = !isMatrix;
+        els.importPageBtn.classList.toggle("secondary", !isImport);
+        els.viewerPageBtn.classList.toggle("secondary", !isViewer);
+        els.matrixPageBtn.classList.toggle("secondary", !isMatrix);
+        els.mobileImportPageBtn?.classList.toggle("active", isImport);
+        els.mobileViewerPageBtn?.classList.toggle("active", isViewer);
+        els.mobileMatrixPageBtn?.classList.toggle("active", isMatrix);
+        els.mobileChannelBtn?.classList.toggle("active", false);
+        pages.forEach((node) => node.classList.remove("page-enter"));
+        if (activePage) {
+          void activePage.offsetWidth;
+          activePage.classList.add("page-enter");
+        }
+        requestAnimationFrame(() => {
+          if (isViewer) renderGallery(false);
+          if (isMatrix) renderMatrix(false);
+          applyImageFits();
+        });
+      };
+      if (outgoing && outgoing !== activePage) {
+        outgoing.classList.add("page-exit");
+        _pageSwitchTimer = setTimeout(() => {
+          _pageSwitchTimer = null;
+          outgoing.classList.remove("page-exit");
+          finish();
+        }, 150);
+      } else {
+        finish();
       }
-      requestAnimationFrame(() => {
-        if (isViewer) renderGallery(false);
-        if (isMatrix) renderMatrix(false);
-        applyImageFits();
-      });
     }
     function setTheme(theme) {
       document.documentElement.dataset.theme = theme;
@@ -2604,11 +2658,11 @@
       els.channelQuickInput.value = "";
       els.channelUrlInput.value = state.channelHandle ? `https://t.me/${state.channelHandle}` : "";
       updateChannelModalText();
-      els.channelModal.hidden = false;
+      showModal(els.channelModal);
       requestAnimationFrame(() => els.channelQuickInput.focus());
     }
     function closeChannelModal() {
-      els.channelModal.hidden = true;
+      hideModal(els.channelModal);
     }
     function applyManualChannel() {
       const handle = manualHandleFromInput(els.channelUrlInput.value);
@@ -3621,17 +3675,23 @@
               const data = await fetch(jsonFiles[0].url).then((res) => res.json());
               messages = parseJson(data);
             } else {
-              const htmlTexts = await Promise.all(htmlFiles.map(async (file) => {
-                const text = await fetch(file.url).then((res) => {
-                  if (!res.ok) throw new Error(t("import.cannotRead", { file: file.name }));
-                  return res.text();
-                });
-                return { file, text };
-              }));
+              const htmlTexts = [];
+              for (let i = 0; i < htmlFiles.length; i++) {
+                const file = htmlFiles[i];
+                setStatus(t("import.reading", { current: i + 1, total: htmlFiles.length, name: file.name }));
+                const res = await fetch(file.url);
+                if (!res.ok) throw new Error(t("import.cannotRead", { file: file.name }));
+                const text = await res.text();
+                htmlTexts.push({ file, text });
+              }
               const title = scan.display_name || scan.source || htmlTexts.map((item) => extractExportTitle(item.text)).find(Boolean) || "";
               channelHandle = channelHandle || inferTelegramChannelFromTexts(htmlTexts, title, scan.root || paths[0]);
               channelEntryLink = inferTelegramEntryLinkFromTexts(htmlTexts);
-              for (const item of htmlTexts) messages.push(...parseTelegramHtml(item.text, { fileUrl: item.file.url, fileName: item.file.name, channelHandle }));
+              for (let i = 0; i < htmlTexts.length; i++) {
+                const item = htmlTexts[i];
+                setStatus(t("import.parsing", { current: i + 1, total: htmlTexts.length }));
+                messages.push(...parseTelegramHtml(item.text, { fileUrl: item.file.url, fileName: item.file.name, channelHandle }));
+              }
             }
             applyImportResult({
               source: scan.display_name || scan.source || scan.root,
@@ -3753,10 +3813,10 @@
     function openLightbox(src) {
       if (!src) return;
       els.lightboxImg.src = src;
-      els.lightbox.hidden = false;
+      showModal(els.lightbox);
     }
     function closeLightbox() {
-      els.lightbox.hidden = true;
+      hideModal(els.lightbox);
       els.lightboxImg.removeAttribute("src");
     }
     const preloadState = { queued: [], queuedUrls: new Set(), active: 0, maxActive: /Mobi|Android/i.test(navigator.userAgent) ? 8 : 4, maxQueue: 60 };
@@ -4236,10 +4296,10 @@
       }
     }
     async function openTelegramModal() {
-      els.telegramModal.hidden = false;
+      showModal(els.telegramModal);
       try { await refreshTelegramStatus(); } catch (error) { setTelegramStatus(error.message || String(error), true); }
     }
-    function closeTelegramModal() { els.telegramModal.hidden = true; }
+    function closeTelegramModal() { hideModal(els.telegramModal); }
     function telegramConfigPayload() {
       const phone = els.telegramPhone.value.trim().replace(/[\s\-()]+/g, "");
       els.telegramPhone.value = phone;
