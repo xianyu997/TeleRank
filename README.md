@@ -44,3 +44,37 @@ bash scripts/build_mac_dmg.sh
 Telegram channels have thousands of posts. But the community has already done the curation — every reaction is a vote. TeleRank extracts that collective signal and shows you what matters.
 
 **Stop scrolling. Start ranking.**
+
+## Windows 后台服务
+
+本项目同时提供 Windows 版本：把 Web 界面和 Telegram 机器人/频道导入打包成一个可双击
+运行、也可安装为系统服务（开机自启、无需登录桌面）的 EXE。相关文件在
+[`TeleRankService/`](TeleRankService/) 目录。
+
+### 双击即用（无需安装）
+
+直接双击 `TeleRankService\TeleRankService.exe`：
+
+- 自动启动本地服务，并用默认浏览器打开 `http://127.0.0.1:1717/`
+- 如果后台服务已在运行，双击只会打开浏览器，不会重复启动
+- 系统服务模式保持无窗口后台运行，不自动弹浏览器
+
+### 构建 EXE
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\TeleRankService\build_service.ps1
+```
+
+产物 `TeleRankService.exe` 需要与旁边的 `_internal` 文件夹一起使用。
+
+### 安装为系统服务
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\TeleRankService\install_service.ps1
+```
+
+- 服务名 `TeleRankService`，开机自启，默认端口 1717
+- 配置/Telegram 会话：`C:\ProgramData\TelegramReactionRanker`
+- 导入数据：`D:\TelegramReactionRanker\Imports`，删除的导入进入 `DeletedImports` 回收目录（可恢复）
+- 配置 Telegram 账号并登录后，会按设定间隔自动增量同步；局域网设备可访问
+- 卸载：`.\TeleRankService\uninstall_service.ps1`（配置和登录会话会保留）
