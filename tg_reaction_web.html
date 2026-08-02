@@ -292,6 +292,26 @@
     h1 { margin: 0; font-size: 18px; line-height: 1.15; }
     .subtitle { color: var(--muted); font-size: 12px; margin-top: 3px; }
     .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+    .settings-wrap { position: relative; display: inline-flex; }
+    .settings-btn { font-size: 16px; line-height: 1; }
+    .settings-popover {
+      position: absolute; right: 0; top: calc(100% + 8px); z-index: 70;
+      min-width: 210px; display: none; flex-direction: column; gap: 8px;
+      padding: 10px; background: var(--panel); color: var(--ink);
+      border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+    }
+    .settings-wrap.open .settings-popover { display: flex; }
+    .settings-popover .btn { width: 100%; }
+    .settings-popover .lang-select { width: 100%; }
+    .server-banner {
+      display: none; margin: 10px auto 0; max-width: 900px; padding: 10px 14px;
+      background: var(--status-bg); border: 1px solid var(--line); border-left: 4px solid var(--brand);
+      border-radius: 8px; font-size: 13px; color: var(--status-text); text-align: center;
+    }
+    .server-banner.show { display: block; }
+    .field-group { margin-top: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
+    .field-group summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; user-select: none; }
+    .field-group .field { margin-top: 8px; }
     .lang-select {
       width: auto;
       min-width: 116px;
@@ -623,13 +643,6 @@
       transition: transform var(--motion-fast) var(--ease-pop), background var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out), box-shadow var(--motion) var(--ease-out);
     }
     .history-item:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
-    .history-item.dragging {
-      opacity: .55;
-    }
-    .history-item.drag-over {
-      outline: 2px solid var(--brand);
-      background: var(--soft);
-    }
     .history-index {
       width: 34px;
       min-height: 34px;
@@ -727,13 +740,6 @@
     }
     .history-mini:hover { transform: translateY(-1px); }
     .history-mini:active { transform: scale(.94); }
-    .history-drag {
-      cursor: grab;
-      user-select: none;
-    }
-    .history-drag:active {
-      cursor: grabbing;
-    }
     .btn.secondary.history-danger {
       color: var(--danger-text);
     }
@@ -1564,11 +1570,8 @@
       .subtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .actions { display: flex; align-items: center; gap: 6px; }
       .actions > * { min-width: 0; }
-      .actions #importPageBtn, .actions #viewerPageBtn, .actions #matrixPageBtn, .actions #telegramSyncBtn,
-      .actions #manualChannelBtn, .actions #exportBtn, .actions #closeBtn { display: none; }
-      .actions .lang-select { min-width: 108px; width: 108px; }
-      .actions #themeBtn { min-width: 40px; width: 40px; overflow: hidden; font-size: 0; }
-      .actions #themeBtn::before { content: "◐"; font-size: 20px; }
+      .actions > *:not(.settings-wrap) { display: none; }
+      .actions .settings-btn { min-width: 40px; width: 40px; }
       .btn, .lang-select { min-height: 40px; padding: 8px; font-size: 13px; }
       .mobile-nav {
         position: fixed;
@@ -1622,9 +1625,7 @@
       /* Remote/LAN clients must not see host-only controls */
       html.remote-client #closeBtn { display: none !important; }
       .history-tools .history-mini { width: 28px; min-height: 28px; border-radius: 6px; font-size: 12px; }
-      /* hide only up/down arrows on mobile; keep drag+star+delete */
       .history-tools .btn:not(.history-mini) { flex: 1 1 auto; font-size: 12px; min-height: 30px; }
-      .history-tools .history-drag { display: inline-grid; touch-action: none; }
       .modal { align-items: end; padding: 0; }
       .modal-panel {
         width: 100%;
@@ -1732,10 +1733,8 @@
       .topbar-inner h1 { font-size: 16px; }
       .topbar-inner .subtitle { display: none; }
       .topbar-inner .actions { gap: 6px; flex-shrink: 0; }
-      .topbar-inner .actions > *:not(#themeBtn):not(.lang-select) { display: none; }
-      .topbar-inner .lang-select { min-width: 0; width: auto; padding: 4px 8px; font-size: 12px; min-height: 32px; }
-      .topbar-inner #themeBtn { min-width: 32px; width: 32px; min-height: 32px; padding: 0; font-size: 0; border-radius: 8px; }
-      .topbar-inner #themeBtn::before { content: "◐"; font-size: 18px; }
+      .topbar-inner .actions > *:not(.settings-wrap) { display: none; }
+      .topbar-inner .settings-btn { min-width: 32px; width: 32px; min-height: 32px; padding: 0; font-size: 16px; border-radius: 8px; }
       /* 主内容区内边距 */
       main { padding: 10px 12px calc(80px + env(safe-area-inset-bottom)) 12px; }
       .viewer-layout, .matrix-layout { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
@@ -1877,22 +1876,28 @@
         </div>
       </div>
       <div class="actions">
-        <select class="select lang-select" id="languageSelect" aria-label="Language">
-          <option value="zh-CN">简体中文</option>
-          <option value="zh-TW">繁體中文</option>
-          <option value="en">English</option>
-        </select>
         <button class="btn" id="importPageBtn" type="button" data-i18n="nav.import">导入</button>
         <button class="btn secondary" id="viewerPageBtn" type="button" data-i18n="nav.viewer">观看</button>
         <button class="btn secondary" id="matrixPageBtn" type="button" data-i18n="nav.matrix">矩阵</button>
-        <button class="btn secondary" id="manualChannelBtn" type="button" disabled data-i18n="nav.channel">频道链接</button>
-        <button class="btn secondary" id="telegramSyncBtn" type="button">Telegram 同步</button>
-        <button class="btn secondary" id="themeBtn" type="button"></button>
-        <button class="btn secondary" id="exportBtn" type="button" disabled data-i18n="nav.export">导出 CSV</button>
+        <div class="settings-wrap" id="settingsWrap">
+          <button class="btn secondary settings-btn" id="settingsBtn" type="button" aria-label="设置" aria-haspopup="true" aria-expanded="false">⚙</button>
+          <div class="settings-popover" role="menu">
+            <button class="btn secondary" id="themeBtn" type="button"></button>
+            <select class="select lang-select" id="languageSelect" aria-label="Language">
+              <option value="zh-CN">简体中文</option>
+              <option value="zh-TW">繁體中文</option>
+              <option value="en">English</option>
+            </select>
+            <button class="btn secondary" id="telegramSyncBtn" type="button">Telegram 同步</button>
+            <button class="btn secondary" id="manualChannelBtn" type="button" disabled data-i18n="nav.channel">频道链接</button>
+            <button class="btn secondary" id="exportBtn" type="button" disabled data-i18n="nav.export">导出 CSV</button>
+          </div>
+        </div>
         <button class="btn secondary" id="closeBtn" type="button" data-i18n="nav.close">关闭应用</button>
       </div>
     </div>
   </header>
+  <div class="server-banner" id="serverBanner" role="status"></div>
 
   <nav class="mobile-nav" aria-label="Mobile navigation">
     <button class="btn secondary" id="mobileImportPageBtn" type="button"><span class="nav-icon">📥</span><span class="nav-label">导入</span></button>
@@ -2004,14 +2009,6 @@
         <button class="btn secondary" id="channelCancelBtn" type="button" data-i18n="common.close">关闭</button>
       </div>
       <div class="field">
-        <label for="channelQuickInput">粘贴 Telegram 频道链接，自动下载图片和表情包</label>
-        <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;">
-          <input class="input" id="channelQuickInput" type="url" placeholder="https://t.me/channel_name" autocomplete="url">
-          <button class="btn" id="channelQuickImportBtn" type="button">🚀 导入</button>
-        </div>
-      </div>
-      <hr style="border:0;border-top:1px solid var(--line);margin:14px 0;">
-      <div class="field">
         <label for="channelUrlInput" data-i18n="channel.urlLabel">手动设置频道链接（仅影响跳转按钮）</label>
         <input class="input" id="channelUrlInput" type="text" placeholder="https://t.me/example">
         <div class="modal-note" id="channelCurrent" data-i18n="channel.currentNone">当前未设置手动频道。</div>
@@ -2034,12 +2031,15 @@
       <div class="import-note">首次只需填写频道和手机号；验证登录后会自动开始完整同步，之后自动增量更新。</div>
       <div class="field"><label for="telegramBotToken">🤖 Bot Token（转发链接到 Bot 自动下载）</label><input class="input" id="telegramBotToken" type="password" placeholder="从 @BotFather 获取，如 123456:ABC..." autocomplete="off"></div>
       <div class="status" id="telegramBotStatus" style="margin-top:4px;"></div>
-      <div class="field"><label for="telegramApiId">API ID（已配置时可留空）</label><input class="input" id="telegramApiId" inputmode="numeric" autocomplete="off"></div>
-      <div class="field"><label for="telegramApiHash">API Hash（已配置时可留空）</label><input class="input" id="telegramApiHash" type="password" autocomplete="off"></div>
       <div class="field"><label for="telegramPhone">手机号码</label><input class="input" id="telegramPhone" inputmode="tel" placeholder="+8613800000000"></div>
       <div class="field"><label for="telegramTarget">频道链接或用户名</label><input class="input" id="telegramTarget" placeholder="https://t.me/telegram 或 @telegram"></div>
-      <div class="field"><label for="telegramInterval">同步间隔（分钟，至少 5）</label><input class="input" id="telegramInterval" type="number" min="5" value="15"></div>
-      <label class="check"><input id="telegramMedia" type="checkbox" checked><span>下载图片和其他媒体文件</span></label>
+      <details class="field-group">
+        <summary>高级设置：API 与同步参数（Bot 用户无需填写）</summary>
+        <div class="field"><label for="telegramApiId">API ID（已配置时可留空）</label><input class="input" id="telegramApiId" inputmode="numeric" autocomplete="off"></div>
+        <div class="field"><label for="telegramApiHash">API Hash（已配置时可留空）</label><input class="input" id="telegramApiHash" type="password" autocomplete="off"></div>
+        <div class="field"><label for="telegramInterval">同步间隔（分钟，至少 5）</label><input class="input" id="telegramInterval" type="number" min="5" value="15"></div>
+        <label class="check"><input id="telegramMedia" type="checkbox" checked><span>下载图片和其他媒体文件</span></label>
+      </details>
       <div class="field"><label for="telegramCode">验证码</label><input class="input" id="telegramCode" inputmode="numeric" autocomplete="one-time-code"></div>
       <div class="field"><label for="telegramPassword">两步验证密码（如启用）</label><input class="input" id="telegramPassword" type="password" autocomplete="current-password"></div>
       <div class="status" id="telegramStatus">保存 API 配置后，发送登录验证码。</div>
@@ -2438,14 +2438,14 @@
       pathInput: $("pathInput"), pathImportBtn: $("pathImportBtn"), browseBtn: $("browseBtn"), telegramQuickTarget: $("telegramQuickTarget"), telegramQuickImportBtn: $("telegramQuickImportBtn"), telegramProgress: $("telegramProgress"), telegramProgressTitle: $("telegramProgressTitle"), telegramProgressCount: $("telegramProgressCount"), telegramProgressBar: $("telegramProgressBar"), telegramProgressDetail: $("telegramProgressDetail"),
       sourceLabel: $("sourceLabel"), status: $("status"), exportBtn: $("exportBtn"),
       closeBtn: $("closeBtn"), themeBtn: $("themeBtn"), languageSelect: $("languageSelect"), manualChannelBtn: $("manualChannelBtn"), telegramSyncBtn: $("telegramSyncBtn"), emojiList: $("emojiList"),
+      settingsWrap: $("settingsWrap"), settingsBtn: $("settingsBtn"), serverBanner: $("serverBanner"),
       importPageBtn: $("importPageBtn"), viewerPageBtn: $("viewerPageBtn"), matrixPageBtn: $("matrixPageBtn"),
       mobileImportPageBtn: $("mobileImportPageBtn"), mobileViewerPageBtn: $("mobileViewerPageBtn"), mobileMatrixPageBtn: $("mobileMatrixPageBtn"), mobileChannelBtn: $("mobileChannelBtn"),
       importPage: $("importPage"), viewerPage: $("viewerPage"), matrixPage: $("matrixPage"),
-      importNote: $("importNote"),
       viewerToggle: $("viewerToggle"), viewerControls: $("viewerControls"),
       historyList: $("historyList"), refreshImportsBtn: $("refreshImportsBtn"), channelSearch: $("channelSearch"), channelCount: $("channelCount"), matrixGallery: $("matrixGallery"),
       lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxBackdrop: $("lightboxBackdrop"),
-      channelModal: $("channelModal"), channelModalBackdrop: $("channelModalBackdrop"), channelUrlInput: $("channelUrlInput"), channelQuickInput: $("channelQuickInput"), channelQuickImportBtn: $("channelQuickImportBtn"),
+      channelModal: $("channelModal"), channelModalBackdrop: $("channelModalBackdrop"), channelUrlInput: $("channelUrlInput"),
       channelCurrent: $("channelCurrent"), channelApplyBtn: $("channelApplyBtn"), channelClearBtn: $("channelClearBtn"), channelCancelBtn: $("channelCancelBtn"),
       telegramModal: $("telegramModal"), telegramModalBackdrop: $("telegramModalBackdrop"), telegramCancelBtn: $("telegramCancelBtn"), telegramApiId: $("telegramApiId"), telegramApiHash: $("telegramApiHash"), telegramPhone: $("telegramPhone"), telegramTarget: $("telegramTarget"), telegramInterval: $("telegramInterval"), telegramMedia: $("telegramMedia"), telegramCode: $("telegramCode"), telegramPassword: $("telegramPassword"), telegramStatus: $("telegramStatus"), telegramSaveBtn: $("telegramSaveBtn"), telegramSendCodeBtn: $("telegramSendCodeBtn"), telegramVerifyCodeBtn: $("telegramVerifyCodeBtn"), telegramVerifyPasswordBtn: $("telegramVerifyPasswordBtn"), telegramSyncNowBtn: $("telegramSyncNowBtn"), telegramBotToken: $("telegramBotToken"), telegramBotStatus: $("telegramBotStatus"),
       includeForwarded: $("includeForwarded"),
@@ -2508,6 +2508,11 @@
       els.status.textContent = text;
       els.status.className = warn ? "status warn" : "status";
     }
+    function showServerBanner(message) {
+      if (!els.serverBanner) return;
+      els.serverBanner.textContent = message;
+      els.serverBanner.classList.add("show");
+    }
     window.addEventListener("error", (event) => {
       const msg = event.message || "未知错误";
       try { setStatus(`页面出错：${msg}，可刷新重试。`, true); } catch (_) {}
@@ -2517,9 +2522,6 @@
       const msg = reason?.message || String(reason || "未知错误");
       try { setStatus(`操作失败：${msg}，请重试。`, true); } catch (_) {}
     });
-    function setImportNote(text) {
-      if (els.importNote) els.importNote.textContent = text;
-    }
     const MOTION_CLOSE_MS = 260;
     let _pageSwitchTimer = null;
     function showModal(el) {
@@ -2655,11 +2657,10 @@
       }
     }
     function openChannelModal() {
-      els.channelQuickInput.value = "";
       els.channelUrlInput.value = state.channelHandle ? `https://t.me/${state.channelHandle}` : "";
       updateChannelModalText();
       showModal(els.channelModal);
-      requestAnimationFrame(() => els.channelQuickInput.focus());
+      requestAnimationFrame(() => els.channelUrlInput.focus());
     }
     function closeChannelModal() {
       hideModal(els.channelModal);
@@ -2841,31 +2842,6 @@
       persistHistory();
       renderHistory();
     }
-    function moveHistoryItem(path, direction) {
-      const key = normalizeHistoryKey(path);
-      const dir = Number(direction) < 0 ? -1 : 1;
-      const visible = orderedHistoryItems(state.history).map((item) => normalizeHistoryKey(item.path));
-      const index = visible.indexOf(key);
-      const target = index + dir;
-      if (index < 0 || target < 0 || target >= visible.length) return;
-      [visible[index], visible[target]] = [visible[target], visible[index]];
-      state.channelOrder = [...visible, ...state.channelOrder.filter((item) => !visible.includes(item))].slice(0, HISTORY_LIMIT);
-      persistHistory();
-      renderHistory();
-    }
-    function reorderHistoryByDrop(sourcePath, targetPath, placeAfter = false) {
-      const sourceKey = normalizeHistoryKey(sourcePath);
-      const targetKey = normalizeHistoryKey(targetPath);
-      if (!sourceKey || !targetKey || sourceKey === targetKey) return;
-      const visible = orderedHistoryItems(state.history).map((item) => normalizeHistoryKey(item.path)).filter((key) => key !== sourceKey);
-      const targetIndex = visible.indexOf(targetKey);
-      if (targetIndex < 0) return;
-      visible.splice(targetIndex + (placeAfter ? 1 : 0), 0, sourceKey);
-      state.channelOrder = [...visible, ...state.channelOrder.filter((item) => !visible.includes(item))].slice(0, HISTORY_LIMIT);
-      persistHistory();
-      renderHistory();
-      setStatus(t("history.orderSaved"));
-    }
     function removeHistoryEntry(path) {
       const key = normalizeHistoryKey(path);
       if (!key) return;
@@ -2929,7 +2905,7 @@
         const identity = historyIdentity(item);
         const handleLink = identity.handle ? `https://t.me/${identity.handle}` : "";
         return `
-        <div class="history-item${favorite ? " fav" : ""}">
+        <div class="history-item${favorite ? " fav" : ""}" data-history-open="${esc(item.path)}" role="button" tabindex="0">
           <div class="history-index">#${index + 1}</div>
           <div class="history-main">
             <div class="history-title-row">
@@ -2940,10 +2916,9 @@
             <div class="history-location" title="${esc(item.path)}">${item.browserOnly ? esc(t("history.browserNote")) : esc(item.path)}</div>
           </div>
           <div class="history-tools">
-            <span class="btn secondary history-mini history-drag" draggable="true" data-history-drag="${esc(item.path)}" aria-label="${esc(t("history.drag"))}">&#9776;</span>
             <button class="btn secondary history-mini${favorite ? " active" : ""}" type="button" data-history-favorite="${esc(item.path)}" aria-label="${esc(favorite ? t("history.unfavorite") : t("history.favorite"))}">${favorite ? "&#9733;" : "&#9734;"}</button>
             <button class="btn secondary history-mini history-danger" type="button" data-history-delete="${esc(item.path)}" aria-label="${esc(t("history.delete"))}" title="${esc(t("history.delete"))}">删</button>
-            ${item.browserOnly ? `<button class="btn secondary" type="button" disabled>${esc(t("history.recorded"))}</button>` : `<button class="btn secondary" type="button" data-history-path="${esc(item.path)}">${esc(t("history.import"))}</button>`}
+            ${item.browserOnly ? `<button class="btn secondary" type="button" disabled>${esc(t("history.recorded"))}</button>` : ""}
           </div>
         </div>
       `; }).join("");
@@ -3505,11 +3480,8 @@
       updateSourceLabel();
       const indexedMedia = mediaCount ?? state.mediaUrls.size;
       setStatus(messages.length
-        ? t("import.filesIndexed", { prefix: statusPrefix || t("import.imported"), files: n(fileCount), media: n(indexedMedia) })
+        ? `${t("import.filesIndexed", { prefix: statusPrefix || t("import.imported"), files: n(fileCount), media: n(indexedMedia) })} · ${t("import.ready", { messages: n(messages.length), media: n(indexedMedia) })}`
         : t("import.noReactions"), !messages.length);
-      setImportNote(messages.length
-        ? t("import.ready", { messages: n(messages.length), media: n(indexedMedia) })
-        : t("import.noReactionData"));
       render();
       if (messages.length) setPage("viewer");
     }
@@ -3721,11 +3693,9 @@
           setStatus(summary + errSummary);
         } else if (errorMessages.length) {
           setStatus(errorMessages[0], true);
-          setImportNote(t("import.pathNote"));
         }
       } catch (error) {
         setStatus(error.message || String(error), true);
-        setImportNote(t("import.pathNote"));
       } finally {
         els.pathImportBtn.disabled = false;
         els.browseBtn.disabled = false;
@@ -4370,21 +4340,6 @@
     els.telegramQuickTarget.addEventListener("keydown", (event) => {
       if (event.key === "Enter") { event.preventDefault(); quickTelegramImport(); }
     });
-    /* channel modal quick import */
-    async function channelQuickImport() {
-      const target = (els.channelQuickInput?.value || "").trim();
-      if (!target) return;
-      els.telegramQuickTarget.value = target;
-      els.channelQuickInput.value = "";
-      els.channelQuickImportBtn.disabled = true;
-      closeChannelModal();
-      await quickTelegramImport();
-      els.channelQuickImportBtn.disabled = false;
-    }
-    els.channelQuickImportBtn?.addEventListener("click", channelQuickImport);
-    els.channelQuickInput?.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") { event.preventDefault(); channelQuickImport(); }
-    });
     els.browseBtn.addEventListener("click", async () => {
       els.browseBtn.disabled = true;
       try {
@@ -4417,6 +4372,20 @@
     els.mobileChannelBtn?.addEventListener("click", openChannelModal);
     els.viewerToggle.addEventListener("click", () => els.viewerControls.classList.toggle("open"));
     els.themeBtn.addEventListener("click", toggleTheme);
+    els.settingsBtn?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const wrap = els.settingsWrap;
+      if (!wrap) return;
+      const open = wrap.classList.toggle("open");
+      els.settingsBtn.setAttribute("aria-expanded", String(open));
+    });
+    document.addEventListener("click", (event) => {
+      const wrap = els.settingsWrap;
+      if (wrap && wrap.classList.contains("open") && !wrap.contains(event.target)) {
+        wrap.classList.remove("open");
+        els.settingsBtn.setAttribute("aria-expanded", "false");
+      }
+    });
     els.languageSelect.addEventListener("change", () => setLanguage(els.languageSelect.value));
     els.manualChannelBtn.addEventListener("click", openChannelModal);
     els.telegramSyncBtn.addEventListener("click", openTelegramModal);
@@ -4455,7 +4424,6 @@
       render();
     });
     els.historyList.addEventListener("click", (event) => {
-      if (event.target.closest("[data-history-drag]")) return;
       const deleter = event.target.closest("[data-history-delete]");
       if (deleter) {
         event.preventDefault();
@@ -4470,58 +4438,21 @@
         toggleHistoryFavorite(favorite.dataset.historyFavorite);
         return;
       }
-      const mover = event.target.closest("[data-history-move]");
-      if (mover) {
-        event.preventDefault();
-        event.stopPropagation();
-        moveHistoryItem(mover.dataset.historyPath, mover.dataset.historyMove);
-        return;
-      }
       const btn = event.target.closest("[data-history-path]");
-      if (!btn) return;
-      loadServerPath(btn.dataset.historyPath);
+      if (btn) { loadServerPath(btn.dataset.historyPath); return; }
+      if (event.target.closest("a")) return;
+      const open = event.target.closest("[data-history-open]");
+      if (open) loadServerPath(open.dataset.historyOpen);
     });
-    let historyDragPath = "";
-    function clearHistoryDragState() {
-      els.historyList.querySelectorAll(".dragging, .drag-over").forEach((node) => node.classList.remove("dragging", "drag-over"));
-      historyDragPath = "";
-    }
-    els.historyList.addEventListener("dragstart", (event) => {
-      const handle = event.target.closest("[data-history-drag]");
-      if (!handle) return;
-      historyDragPath = handle.dataset.historyDrag || "";
-      if (!historyDragPath) return;
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", historyDragPath);
-      handle.closest(".history-item")?.classList.add("dragging");
-    });
-    els.historyList.addEventListener("dragover", (event) => {
-      const item = event.target.closest(".history-item[data-history-path]");
-      if (!item || !historyDragPath || normalizeHistoryKey(item.dataset.historyPath) === normalizeHistoryKey(historyDragPath)) return;
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
-      els.historyList.querySelectorAll(".drag-over").forEach((node) => {
-        if (node !== item) node.classList.remove("drag-over");
-      });
-      item.classList.add("drag-over");
-    });
-    els.historyList.addEventListener("dragleave", (event) => {
-      const item = event.target.closest(".history-item[data-history-path]");
-      if (item && !item.contains(event.relatedTarget)) item.classList.remove("drag-over");
-    });
-    els.historyList.addEventListener("drop", (event) => {
-      const item = event.target.closest(".history-item[data-history-path]");
-      if (!item || !historyDragPath) {
-        clearHistoryDragState();
-        return;
+    els.historyList.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        const open = event.target.closest("[data-history-open]");
+        if (open && !event.target.closest("button") && !event.target.closest("a")) {
+          event.preventDefault();
+          loadServerPath(open.dataset.historyOpen);
+        }
       }
-      event.preventDefault();
-      const rect = item.getBoundingClientRect();
-      const placeAfter = event.clientY > rect.top + rect.height / 2;
-      reorderHistoryByDrop(historyDragPath, item.dataset.historyPath, placeAfter);
-      clearHistoryDragState();
     });
-    els.historyList.addEventListener("dragend", clearHistoryDragState);
     els.refreshImportsBtn.addEventListener("click", loadKnownImports);
     els.channelSearch.addEventListener("input", renderHistory);
     els.gallery.addEventListener("click", (event) => {
@@ -4598,11 +4529,17 @@
       if (event.key === "Escape") els.viewerControls.classList.remove("open");
     });
 
-    fetch("/api/preferences").then(r=>r.json()).then(prefs=>{
-      if (prefs && prefs.last_import_path) {
-        els.pathInput.value = prefs.last_import_path;
-      }
-    }).catch(()=>{});
+    if (location.protocol === "file:") {
+      showServerBanner("当前是以文件方式直接打开的页面，功能不可用。请通过 TG Reaction Ranker 服务打开（http://127.0.0.1:1717/）。");
+    } else {
+      fetch("/api/preferences", { cache: "no-store" }).then(r=>r.json()).then(prefs=>{
+        if (prefs && prefs.last_import_path) {
+          els.pathInput.value = prefs.last_import_path;
+        }
+      }).catch(()=>{
+        showServerBanner("未连接到 TG Reaction Ranker 服务。请确认 TeleRankService 正在运行后刷新本页。");
+      });
+    }
     setTheme(localStorage.getItem("tgRankerTheme") || "dark");
     setLanguage(localStorage.getItem(LANGUAGE_KEY) || navigator.language, false);
     loadChannelPrefs();
