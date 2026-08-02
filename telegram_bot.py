@@ -121,7 +121,7 @@ class TelegramBotListener:
         if result.get("action") == "login_required":
             self._send_message(
                 chat_id,
-                f"⚠️ @{target}：需要先在 TG Reaction Ranker 中登录 Telegram 账号。",
+                f"⚠️ @{target}：需要先在 TG Reaction Ranker 中登录 Telegram 账号。登录完成后，请把这条频道链接重新发给本机器人。",
             )
             return
 
@@ -152,6 +152,16 @@ class TelegramBotListener:
             if text != last_text and msg_id:
                 self._edit_message(chat_id, msg_id, text)
                 last_text = text
+
+        # Long imports: keep watching at a slower pace instead of giving up.
+        if job.get("running"):
+            self._send_message(chat_id, "⏳ 导入仍在进行中（已超过 10 分钟），完成后我会再通知你。")
+            while True:
+                time.sleep(30)
+                with self._sync.lock:
+                    job = dict(self._sync.job)
+                if not job.get("running"):
+                    break
 
         # Final status
         with self._sync.lock:

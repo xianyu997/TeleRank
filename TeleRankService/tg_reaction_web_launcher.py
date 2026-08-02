@@ -25,7 +25,7 @@ if sys.platform == "darwin":
 
 APP_FILE = "tg_reaction_web.html"
 PREFERRED_PORT = 1717
-APP_VERSION = "2026-08-02-hardening"
+APP_VERSION = "2026-08-02-ux-polish"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
 INVALID_NAME_CHARS = '<>:"/\\|?*' if os.name == "nt" else ':/'
 
@@ -158,6 +158,7 @@ def pick_folder_windows():
         result = subprocess.run(
             ["powershell", "-NoProfile", "-STA", "-NonInteractive", "-Command", script],
             capture_output=True, text=True, timeout=120,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         if result.returncode == 0 and result.stdout.strip():
             return result.stdout.strip()

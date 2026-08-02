@@ -11,6 +11,7 @@ import os
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.request
 from pathlib import Path
@@ -70,6 +71,69 @@ class BotConcurrencyTests(unittest.TestCase):
             bot._import_and_track(1, "chan")
         self.assertNotIn("chan", bot._importing)
         self.assertEqual(bot._import_sem._value, bot._import_sem._initial_value)
+
+
+class BotMessageTests(unittest.TestCase):
+    class _FakeSync:
+        def __init__(self, running=True):
+            self.lock = threading.Lock()
+            self.job = {
+                "running": running, "stage": "syncing", "message": "Scanning",
+                "progress": 0, "messages_scanned": 0, "media_downloaded": 0,
+            }
+
+        def quick_import(self, target):
+            return {"action": "syncing"}
+
+    class _FakeBot(TelegramBotListener):
+        def __init__(self, sync):
+            super().__init__("123456:" + "A" * 35, sync)
+            self.messages = []
+            self.edited = []
+
+        def _api(self, method, data=None):
+            return {"ok": True, "result": {"message_id": 1}}
+
+        def _send_message(self, chat_id, text):
+            self.messages.append(text)
+
+        def _edit_message(self, chat_id, message_id, text):
+            self.edited.append(text)
+
+    def test_login_required_tells_user_to_resend(self):
+        class LoginSync:
+            lock = threading.Lock()
+            job = {"running": False, "stage": "idle", "message": ""}
+
+            def quick_import(self, target):
+                return {"action": "login_required", "message": "需要登录"}
+
+        bot = self._FakeBot(LoginSync())
+        bot._import_and_track(1, "chan")
+        self.assertTrue(any("重新发" in m for m in bot.messages), bot.messages)
+
+    def test_long_import_sends_interim_and_completion(self):
+        bot = self._FakeBot(self._FakeSync(running=True))
+        original_sleep = time.sleep
+        state = {"n": 0}
+
+        def fake_sleep(_secs):
+            state["n"] += 1
+            if state["n"] >= 310:  # 300 fast polls + a few slow polls
+                with bot._sync.lock:
+                    bot._sync.job.update({
+                        "running": False, "stage": "ready", "progress": 3,
+                        "messages_scanned": 5, "media_downloaded": 2, "message": "",
+                    })
+
+        time.sleep = fake_sleep
+        try:
+            bot._import_and_track(1, "chan")
+        finally:
+            time.sleep = original_sleep
+        combined = "\n".join(bot.messages + bot.edited)
+        self.assertIn("仍在进行", combined)
+        self.assertIn("下载完成", combined)
 
 
 class SyncPayloadTests(unittest.TestCase):

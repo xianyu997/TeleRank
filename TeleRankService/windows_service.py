@@ -336,11 +336,31 @@ def _find_running_instance(launcher):
     return None
 
 
+def _show_fatal_error(message):
+    """Show an error dialog (windowed EXE has no console to print to)."""
+    try:
+        import ctypes
+
+        ctypes.windll.user32.MessageBoxW(0, message, "TG Reaction Ranker", 0x10)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def run_foreground(explicit=None):
     data_dir, port, _ = resolve_runtime_settings(explicit)
     logger = setup_logging(data_dir)
     logger.info("=== Foreground run (pid=%s) ===", os.getpid())
+    try:
+        _run_foreground_body(data_dir, port, logger, explicit)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Foreground startup failed")
+        _show_fatal_error(
+            f"TG Reaction Ranker 启动失败：{exc}\n\n日志文件：{Path(data_dir) / LOG_FILE}"
+        )
+        raise
 
+
+def _run_foreground_body(data_dir, port, logger, explicit=None):
     import tg_reaction_web_launcher as launcher
 
     # If the app is already running (e.g. the installed service), just open the

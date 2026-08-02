@@ -1603,6 +1603,8 @@
       .history-handle-missing { font-size: 10px; padding: 1px 7px; }
       .history-location { font-size: 10px; }
       .history-tools { gap: 4px; }
+      /* Remote/LAN clients must not see host-only controls */
+      html.remote-client #closeBtn { display: none !important; }
       .history-tools .history-mini { width: 28px; min-height: 28px; border-radius: 6px; font-size: 12px; }
       /* hide only up/down arrows on mobile; keep drag+star+delete */
       .history-tools .btn:not(.history-mini) { flex: 1 1 auto; font-size: 12px; min-height: 30px; }
@@ -2484,6 +2486,15 @@
       els.status.textContent = text;
       els.status.className = warn ? "status warn" : "status";
     }
+    window.addEventListener("error", (event) => {
+      const msg = event.message || "未知错误";
+      try { setStatus(`页面出错：${msg}，可刷新重试。`, true); } catch (_) {}
+    });
+    window.addEventListener("unhandledrejection", (event) => {
+      const reason = event.reason || {};
+      const msg = reason?.message || String(reason || "未知错误");
+      try { setStatus(`操作失败：${msg}，请重试。`, true); } catch (_) {}
+    });
     function setImportNote(text) {
       if (els.importNote) els.importNote.textContent = text;
     }
@@ -4322,8 +4333,12 @@
         if (data.ok && data.path) {
           els.pathInput.value = data.path;
           loadServerPath(data.path);
+        } else if (data.error) {
+          setStatus(data.error, true);
         }
-      } catch (_) {} finally {
+      } catch (error) {
+        setStatus(error?.message || "无法打开文件夹选择器。", true);
+      } finally {
         els.browseBtn.disabled = false;
       }
     });
