@@ -442,7 +442,7 @@
     }
     .import-layout {
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr) auto;
       gap: 14px;
       height: 100%;
       overflow: hidden;
@@ -1907,6 +1907,26 @@
   </nav>
 
   <main class="page import-layout" id="importPage">
+    <section class="panel import-channels" style="display:flex;flex-direction:column;overflow:hidden;padding:12px;">
+      <div class="status import-status" id="status" data-i18n="status.initial">粘贴 Telegram 频道链接自动下载，或选择本地 Telegram 导出文件夹导入。</div>
+      <div class="history-head">
+        <h2 class="section-title" data-i18n="history.title">已导入频道</h2>
+        <span class="history-stats" id="channelCount">0</span>
+        <button class="btn secondary" id="refreshImportsBtn" type="button" data-i18n="history.refresh" style="margin-left:auto;">刷新</button>
+      </div>
+      <div class="channel-search">
+        <input class="input" id="channelSearch" type="search" placeholder="🔍 搜索频道名称或频道号..." autocomplete="off">
+      </div>
+      <div class="telegram-progress" id="telegramProgress" hidden style="margin:0 0 8px;">
+        <div class="telegram-progress-head"><strong id="telegramProgressTitle">等待下载任务</strong><span id="telegramProgressCount">0 条消息 · 0 个媒体</span></div>
+        <progress id="telegramProgressBar" max="100" value="0"></progress>
+        <div class="telegram-progress-detail" id="telegramProgressDetail">下载开始后会显示当前图片或贴纸及文件进度。</div>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="import-note" data-i18n="history.empty">还没有导入频道。</div>
+      </div>
+    </section>
+
     <div class="import-tools">
       <div class="mobile-remote-note" role="status" data-i18n="mobile.remoteHint">手机端为远程查看模式：请先在电脑上导入频道，或在下方粘贴 Telegram 链接自动下载。</div>
       <section class="panel import-panel" style="padding:12px;">
@@ -1932,26 +1952,6 @@
         </div>
       </section>
     </div>
-
-    <section class="panel import-channels" style="display:flex;flex-direction:column;overflow:hidden;padding:12px;">
-      <div class="status import-status" id="status" data-i18n="status.initial">粘贴 Telegram 频道链接自动下载，或选择本地 Telegram 导出文件夹导入。</div>
-      <div class="history-head">
-        <h2 class="section-title" data-i18n="history.title">已导入频道</h2>
-        <span class="history-stats" id="channelCount">0</span>
-        <button class="btn secondary" id="refreshImportsBtn" type="button" data-i18n="history.refresh" style="margin-left:auto;">刷新</button>
-      </div>
-      <div class="channel-search">
-        <input class="input" id="channelSearch" type="search" placeholder="🔍 搜索频道名称或频道号..." autocomplete="off">
-      </div>
-      <div class="telegram-progress" id="telegramProgress" hidden style="margin:0 0 8px;">
-        <div class="telegram-progress-head"><strong id="telegramProgressTitle">等待下载任务</strong><span id="telegramProgressCount">0 条消息 · 0 个媒体</span></div>
-        <progress id="telegramProgressBar" max="100" value="0"></progress>
-        <div class="telegram-progress-detail" id="telegramProgressDetail">下载开始后会显示当前图片或贴纸及文件进度。</div>
-      </div>
-      <div class="history-list" id="historyList">
-        <div class="import-note" data-i18n="history.empty">还没有导入频道。</div>
-      </div>
-    </section>
   </main>
 
   <main class="page viewer-layout" id="viewerPage" hidden>
