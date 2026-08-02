@@ -6,9 +6,12 @@ Runs the same HTTP server / Telegram bot listener as
 so the ranking UI and bot auto-import keep running without a console window
 or a logged-in desktop session.
 
-Double-click TeleRankService.exe (or run it with no arguments from a prompt):
-it starts the server and opens the HTML UI in your default browser. If the
-service is already running, it simply opens the browser and exits.
+Double-click TeleRankService.exe (or run it with no arguments):
+it starts the server silently in the background (no terminal window) and opens
+the HTML UI in your default browser. If the service is already running, it
+simply opens the browser and exits. To stop a manually started instance, run
+``stop_service.ps1`` (or ``sc.exe stop TeleRankService`` for the installed
+service).
 
 Command line (run the built EXE from an elevated prompt):
     TeleRankService.exe --install [--port=1717] [--data-dir=C:\\ProgramData\\TelegramReactionRanker]
@@ -60,6 +63,14 @@ PARAM_KEY = rf"SYSTEM\CurrentControlSet\Services\{SERVICE_NAME}\Parameters"
 _logger = logging.getLogger("telrank.service")
 
 
+def safe_print(*args, **kwargs):
+    """Console output that never crashes the windowed (no-console) EXE."""
+    try:
+        print(*args, **kwargs)
+    except Exception:  # noqa: BLE001 - stdout may be None in windowed mode
+        pass
+
+
 # --------------------------------------------------------------------------
 # Registry parameters
 # --------------------------------------------------------------------------
@@ -91,7 +102,7 @@ def write_service_parameters(port=None, data_dir=None, archive_root=None, trash_
                 winreg.SetValueEx(key, "TrashRoot", 0, winreg.REG_SZ, str(trash_root))
         return True
     except OSError as exc:
-        print(f"[{SERVICE_NAME}] Could not write service parameters: {exc}")
+        safe_print(f"[{SERVICE_NAME}] Could not write service parameters: {exc}")
         return False
 
 
@@ -291,6 +302,40 @@ class TeleRankService(win32serviceutil.ServiceFramework):
 # Foreground (test / manual) mode
 # --------------------------------------------------------------------------
 
+def _candidate_data_dirs():
+    dirs = []
+    for value in (
+        os.environ.get("TELERANK_DATA_DIR", ""),
+        read_service_parameters().get("DataDir", ""),
+        DEFAULT_DATA_DIR,
+    ):
+        if value:
+            dirs.append(str(Path(value).expanduser()))
+    seen = set()
+    return [d for d in dirs if not (d.lower() in seen or seen.add(d.lower()))]
+
+
+def _find_running_instance(launcher):
+    """Return the URL of an already-running instance, if any."""
+    # 1) Fast path: ports recorded in service-info.json of known data dirs.
+    for data_dir in _candidate_data_dirs():
+        try:
+            info_path = Path(data_dir) / INFO_FILE
+            if info_path.exists():
+                data = json.loads(info_path.read_text(encoding="utf-8"))
+                if data.get("state") == "running" and data.get("port"):
+                    port = int(data["port"])
+                    if launcher.is_serving(port):
+                        return launcher.app_url(port)
+        except Exception:  # noqa: BLE001
+            continue
+    # 2) Probe the preferred port and a few fallbacks (service may run there).
+    for port in range(launcher.PREFERRED_PORT, launcher.PREFERRED_PORT + 3):
+        if launcher.is_serving(port):
+            return launcher.app_url(port)
+    return None
+
+
 def run_foreground(explicit=None):
     data_dir, port, _ = resolve_runtime_settings(explicit)
     logger = setup_logging(data_dir)
@@ -300,11 +345,12 @@ def run_foreground(explicit=None):
 
     # If the app is already running (e.g. the installed service), just open the
     # browser and exit instead of starting a second server.
-    if launcher.is_serving(launcher.PREFERRED_PORT):
-        url = launcher.app_url(launcher.PREFERRED_PORT)
+    running_url = _find_running_instance(launcher)
+    if running_url:
+        url = running_url
         logger.info("App already running at %s; opening browser", url)
-        print(f"[{SERVICE_NAME}] App is already running at {url}")
-        print(f"[{SERVICE_NAME}] Opening browser...")
+        safe_print(f"[{SERVICE_NAME}] App is already running at {url}")
+        safe_print(f"[{SERVICE_NAME}] Opening browser...")
         launcher.open_url(url)
         time.sleep(3)
         return
@@ -317,17 +363,17 @@ def run_foreground(explicit=None):
         data_dir, "running", port=chosen, url=local_url, lan_url=lan,
         version=launcher.APP_VERSION,
     )
-    print(f"[{SERVICE_NAME}] Listening on {local_url}")
-    print(f"[{SERVICE_NAME}] LAN address: {lan}")
-    print(f"[{SERVICE_NAME}] Data dir: {data_dir}")
-    print(f"[{SERVICE_NAME}] Opening browser...")
+    safe_print(f"[{SERVICE_NAME}] Listening on {local_url}")
+    safe_print(f"[{SERVICE_NAME}] LAN address: {lan}")
+    safe_print(f"[{SERVICE_NAME}] Data dir: {data_dir}")
+    safe_print(f"[{SERVICE_NAME}] Opening browser...")
     launcher.open_url(local_url)
-    print("[{SERVICE_NAME}] Press Ctrl+C to stop")
+    safe_print(f"[{SERVICE_NAME}] Running in background. Stop it with stop_service.ps1 or sc.exe stop {SERVICE_NAME}")
     try:
         while True:
             time.sleep(1)
             if not thread.is_alive():
-                print(f"[{SERVICE_NAME}] Server thread died")
+                safe_print(f"[{SERVICE_NAME}] Server thread died")
                 break
     except KeyboardInterrupt:
         pass
@@ -335,7 +381,7 @@ def run_foreground(explicit=None):
         server.shutdown()
         server.server_close()
         write_info_file(data_dir, "stopped")
-        print(f"[{SERVICE_NAME}] Stopped")
+        safe_print(f"[{SERVICE_NAME}] Stopped")
 
 
 # --------------------------------------------------------------------------
@@ -360,16 +406,26 @@ def parse_custom_options(args):
 
 
 def print_status():
-    print(subprocess.run(["sc.exe", "query", SERVICE_NAME], capture_output=True, text=True).stdout)
-    info = Path(DEFAULT_DATA_DIR) / INFO_FILE
-    for candidate in (info, Path(read_service_parameters().get("DataDir", DEFAULT_DATA_DIR)) / INFO_FILE):
+    lines = []
+    sc_output = subprocess.run(["sc.exe", "query", SERVICE_NAME], capture_output=True, text=True).stdout
+    lines.append(sc_output)
+    for candidate in [Path(d) / INFO_FILE for d in _candidate_data_dirs()]:
         if candidate.exists():
             try:
-                print(f"[{SERVICE_NAME}] status file: {candidate}")
-                print(candidate.read_text(encoding="utf-8"))
+                lines.append(f"[{SERVICE_NAME}] status file: {candidate}")
+                lines.append(candidate.read_text(encoding="utf-8"))
                 break
             except OSError:
                 pass
+    output = "\n".join(lines)
+    safe_print(output)
+    # Windowed EXE has no visible console: also write to a readable file.
+    try:
+        status_file = Path(sys.executable).resolve().parent / f"{SERVICE_NAME}-status.txt"
+        status_file.write_text(output, encoding="utf-8")
+        safe_print(f"[{SERVICE_NAME}] status written to {status_file}")
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def main():
@@ -386,7 +442,7 @@ def main():
             servicemanager.PrepareToHostSingle(TeleRankService)
             servicemanager.StartServiceCtrlDispatcher()
         except Exception as exc:  # noqa: BLE001
-            print(f"[{SERVICE_NAME}] Not started by the Service Control Manager ({exc}); falling back to foreground mode")
+            safe_print(f"[{SERVICE_NAME}] Not started by the Service Control Manager ({exc}); falling back to foreground mode")
             run_foreground()
         return
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## v2026.08.02-hardening — 加固与健壮性
+
+- 保存偏好设置接口仅限本机（安全加固）
+- Bot：修复 `t.me/s/` 预览链接提取、URL 中 bot 账号排除、导入并发限制与去重
+- 同步：无新增消息时不再重写 `result.json`；长同步期间定时落盘检查点
+- 导入扫描支持 `TELERANK_OFFLINE` 离线模式；频道标题查询结果落盘缓存
+- 双击启动可发现回退端口上的运行实例；`--status` 输出到文件；`stop_service.ps1` 更健壮
+- 新增离线自动化测试（`python -m unittest discover -s tests -v`）
+
 ## v2026.08.02 — Windows 后台服务与改进
 
 - Windows 后台服务 EXE（`TeleRankService`）：双击即开浏览器，可安装为系统服务

@@ -21,13 +21,17 @@ powershell -ExecutionPolicy Bypass -File .\build_service.ps1
 产物：`TeleRankService.exe`（连同旁边的 `_internal` 文件夹一起使用，不能只拷单个 exe）。
 构建脚本会把这个产物自动同步到本文件夹根目录。
 
-## 双击运行（打开即用）
+## 双击运行（打开即用，无窗口）
 
-直接双击 `TeleRankService.exe`：会自动启动本地服务并打开默认浏览器进入
-`http://127.0.0.1:1717/`。如果服务已经在后台运行（开机自启的那种），双击只是
-打开浏览器，不会重复启动。
+直接双击 `TeleRankService.exe`：**不会弹出终端窗口**，会在后台静默启动本地服务，
+并自动用默认浏览器打开 `http://127.0.0.1:1717/`。如果服务已经在后台运行
+（开机自启的那种），双击只是打开浏览器，不会重复启动。
 
-后台服务本身保持无窗口运行，不会自动弹浏览器；只有手动打开 EXE 才弹。
+- 手动启动的实例停止方式：运行 `stop_service.ps1`（或 `sc.exe stop TeleRankService`）
+- 安装为系统服务后保持无窗口运行，不会自动弹浏览器；只有手动打开 EXE 才弹
+- 无网络/慢网络环境可设置 `TELERANK_OFFLINE=1` 禁用导入时的频道句柄网页查询
+- `--status` 会把状态写到 EXE 旁边的 `TeleRankService-status.txt`（无窗口下可读）
+- `stop_service.ps1` 支持自定义数据目录/回退端口（自动探测正在运行的实例）
 
 ## 安装 / 启动
 
@@ -52,6 +56,7 @@ sc.exe stop TeleRankService             # 停止
 sc.exe start TeleRankService            # 启动
 .\TeleRankService.exe --status
 .\TeleRankService.exe --run     # 前台模式（等同于双击，也会打开浏览器）
+.\stop_service.ps1              # 停止手动启动的后台实例（服务模式用 sc.exe stop）
 ```
 
 ## 卸载

@@ -25,7 +25,7 @@ if sys.platform == "darwin":
 
 APP_FILE = "tg_reaction_web.html"
 PREFERRED_PORT = 1717
-APP_VERSION = "2026-08-02-windows-improvements"
+APP_VERSION = "2026-08-02-hardening"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
 INVALID_NAME_CHARS = '<>:"/\\|?*' if os.name == "nt" else ':/'
 
@@ -77,7 +77,30 @@ TELEGRAM_CHANNEL_REDIRECTS = {
 SCAN_CACHE = {}
 SCAN_LOCK = threading.Lock()
 HANDLE_TITLE_CACHE = {}
+HANDLE_TITLE_CACHE_FILE = PREFS_FILE.parent / "handle-title-cache.json"
 TELEGRAM_SERVICE = None
+
+
+def _load_handle_cache():
+    try:
+        if HANDLE_TITLE_CACHE_FILE.exists():
+            data = json.loads(HANDLE_TITLE_CACHE_FILE.read_text(encoding="utf-8"))
+            HANDLE_TITLE_CACHE.update({str(k).lower(): v for k, v in data.items() if isinstance(v, str)})
+    except Exception:
+        pass
+
+
+def _save_handle_cache():
+    try:
+        HANDLE_TITLE_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        HANDLE_TITLE_CACHE_FILE.write_text(
+            json.dumps(HANDLE_TITLE_CACHE, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except Exception:
+        pass
+
+
+_load_handle_cache()
 
 
 def app_dir():
@@ -362,6 +385,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_json({"ok": False, "error": "no folder selected"}, 400)
 
     def handle_save_preferences(self):
+        if not self.is_local_client():
+            self.send_json({"ok": False, "error": "saving preferences is only available on the host computer"}, 403)
+            return
         try:
             body = self.read_json_body()
             success = save_preferences(body)
@@ -635,6 +661,7 @@ def fetch_telegram_public_title(handle):
         except Exception:
             continue
     HANDLE_TITLE_CACHE[key] = title
+    _save_handle_cache()
     return title
 
 
@@ -864,7 +891,8 @@ def copy_tree_incremental(source, destination):
 
 
 def organize_export_root(root, message_files):
-    archive_name, display_name, handle = build_archive_name(root, message_files, allow_remote=True)
+    offline = os.environ.get("TELERANK_OFFLINE", "").strip().lower() in ("1", "true", "yes")
+    archive_name, display_name, handle = build_archive_name(root, message_files, allow_remote=not offline)
     archive_root = ARCHIVE_ROOT
     destination = archive_root / archive_name
     try:

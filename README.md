@@ -78,3 +78,11 @@ powershell -ExecutionPolicy Bypass -File .\TeleRankService\install_service.ps1
 - 导入数据：`D:\TelegramReactionRanker\Imports`，删除的导入进入 `DeletedImports` 回收目录（可恢复）
 - 配置 Telegram 账号并登录后，会按设定间隔自动增量同步；局域网设备可访问
 - 卸载：`.\TeleRankService\uninstall_service.ps1`（配置和登录会话会保留）
+
+## 开发与测试
+
+后端提供不依赖 Telegram 凭据/网络的离线冒烟测试：
+
+```bash
+python -m unittest discover -s tests -v
+```

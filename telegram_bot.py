@@ -45,6 +45,9 @@ class TelegramBotListener:
         self._thread = None
         self._offset = 0
         self._last_error = ""
+        self._import_sem = threading.BoundedSemaphore(2)
+        self._importing = set()
+        self._importing_lock = threading.Lock()
 
     # ── Bot API helpers ──────────────────────────────────────────
 
@@ -80,11 +83,14 @@ class TelegramBotListener:
     def _extract_links(text):
         found = []
         for match in re.finditer(
-            r"(?:https?://)?(?:www\.)?(?:t\.me|telegram\.me)/([A-Za-z0-9_]{3,})",
+            r"(?:https?://)?(?:www\.)?(?:t\.me|telegram\.me)/(?:s/)?([A-Za-z0-9_]{3,})",
             text or "",
             re.IGNORECASE,
         ):
-            found.append(match.group(1))
+            raw = match.group(1)
+            if raw.lower().endswith("bot"):
+                continue
+            found.append(raw)
         for match in re.finditer(r"@([A-Za-z0-9_]{3,})", text or ""):
             handle = match.group(1)
             if handle.lower().endswith("bot"):
@@ -95,6 +101,16 @@ class TelegramBotListener:
     # ── Import with progress tracking ────────────────────────────
 
     def _import_and_track(self, chat_id, target):
+        """Concurrency-limited wrapper with in-flight deduplication."""
+        self._import_sem.acquire()
+        try:
+            self._import_and_track_inner(chat_id, target)
+        finally:
+            self._import_sem.release()
+            with self._importing_lock:
+                self._importing.discard(target)
+
+    def _import_and_track_inner(self, chat_id, target):
         """Start import, poll progress, report back via messages."""
         try:
             result = self._sync.quick_import(target)
@@ -183,6 +199,10 @@ class TelegramBotListener:
                         continue
                     # Process each link in a background thread so polling continues
                     for target in links:
+                        with self._importing_lock:
+                            if target in self._importing:
+                                continue
+                            self._importing.add(target)
                         threading.Thread(
                             target=self._import_and_track,
                             args=(chat_id, target),

@@ -285,6 +285,12 @@ class TelegramSyncService:
         else:
             self._set_job(running=False, stage="ready", message="Sync complete")
 
+    def _write_channel_payload(self, data_file, title, records):
+        """Write the full channel result.json (sorted by message id)."""
+        payload = {"name": title, "type": "channel", "messages": [records[k] for k in sorted(records)]}
+        self._write_json(data_file, payload)
+        return len(payload["messages"])
+
     @staticmethod
     def _reaction_counts(message):
         results = getattr(getattr(message, "reactions", None), "results", None) or []
@@ -316,6 +322,7 @@ class TelegramSyncService:
             data_file = folder / "result.json"
             existing = self._read_json(data_file, {"name": title, "messages": []})
             records = {int(item.get("id", 0) or 0): item for item in existing.get("messages", []) if str(item.get("id", "")).isdigit()}
+            records_before = len(records)
             self._set_job(stage="syncing", message="Scanning channel messages", progress=0, total=0, messages_scanned=0, media_downloaded=0)
             downloaded = 0
             scanned = 0
@@ -367,9 +374,13 @@ class TelegramSyncService:
                 checkpoint = max(checkpoint, int(message.id))
                 downloaded += 1
                 self._set_job(stage="syncing", message="Scanning channel messages", progress=downloaded, messages_scanned=scanned, media_downloaded=media_downloaded, media_current="", media_bytes=0, media_total_bytes=0)
+                if downloaded % 500 == 0:
+                    # Crash-safe checkpoint: persist progress during long first syncs.
+                    self._write_channel_payload(data_file, title, records)
 
-            payload = {"name": title, "type": "channel", "messages": [records[k] for k in sorted(records)]}
-            self._write_json(data_file, payload)
+            # Only rewrite result.json when new content actually arrived.
+            if len(records) != records_before:
+                self._write_channel_payload(data_file, title, records)
             channels[key] = {"last_id": checkpoint, "path": str(folder), "target": username, "updated": int(time.time())}
             self._write_json(self.state_file, state)
             prefs = self._read_json(self.base_dir / "preferences.json", {})
