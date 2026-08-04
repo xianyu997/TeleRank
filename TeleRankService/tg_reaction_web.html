@@ -3708,7 +3708,7 @@
         if (!els.includeForwarded.checked && msg.forwardedFrom) return false;
         if (state.selectedEmoji !== "__all" && !msg.reactions.some((rx) => rx.emoji === state.selectedEmoji)) return false;
         // In gallery mode, only show messages with media (same as emoji-filtered views)
-        if (state.selectedEmoji === "__all" && !mediaItems(msg).length && !isMatrix) return false;
+        if (state.selectedEmoji === "__all" && !mediaItems(msg).length && els.matrixPage.hidden) return false;
         if (!query) return true;
         return msg.searchText.includes(query);
       });

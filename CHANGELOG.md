@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.08.04-matrix-fix — 矩阵视图渲染修复
+
+- 修复 `filteredRows()` 引用未定义 `isMatrix` 导致的页面加载报错（含纯文字消息的频道无法打开）
+
 ## v2026.08.04-parallel-download — 并行下载
 
 - 媒体下载改为按上限并行（默认 3，可配 1-10：界面「并行下载数」或 `TELERANK_DOWNLOAD_PARALLEL`）
