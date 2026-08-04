@@ -9,7 +9,7 @@ import urllib.request
 
 # macOS system proxy detection — PyInstaller apps may not auto-detect
 def _build_opener():
-    """Return an opener that uses the macOS system proxy (Clash/V2Ray/etc)."""
+    """Return an opener that uses the system proxy (macOS framework / env / Windows registry)."""
     try:
         # macOS System Configuration framework
         from SystemConfiguration import SCDynamicStoreCopyProxies
@@ -23,11 +23,41 @@ def _build_opener():
     except Exception:
         pass
     # fallback: check environment variables
+    proxies = {}
     for var in ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"):
         val = os.environ.get(var, "")
         if val:
-            handler = urllib.request.ProxyHandler({"http": val, "https": val})
-            return urllib.request.build_opener(handler)
+            proxies.setdefault("http", val)
+            proxies.setdefault("https", val)
+    # Windows: fall back to the system (WinINET) proxy, e.g. Clash/V2Ray
+    if not proxies and os.name == "nt":
+        try:
+            import winreg
+
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+            ) as key:
+                enabled = int(winreg.QueryValueEx(key, "ProxyEnable")[0] or 0)
+                server = str(winreg.QueryValueEx(key, "ProxyServer")[0] or "")
+            if enabled and server:
+                if "=" in server:
+                    for part in server.split(";"):
+                        if "=" in part:
+                            proto, url = part.split("=", 1)
+                            if url and not url.startswith("http"):
+                                url = "http://" + url
+                            proxies[proto.strip()] = url
+                else:
+                    if not server.startswith("http"):
+                        server = "http://" + server
+                    proxies["http"] = server
+                    proxies["https"] = server
+        except Exception:
+            pass
+    if proxies:
+        handler = urllib.request.ProxyHandler(proxies)
+        return urllib.request.build_opener(handler)
     return urllib.request.build_opener()
 
 _API_OPENER = _build_opener()

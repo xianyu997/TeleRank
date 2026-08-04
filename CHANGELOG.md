@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.08.04-bot-proxy — Bot 代理修复
+
+- Bot API 轮询自动使用 Windows 系统代理（Clash/V2Ray），修复 `api.telegram.org` 直连超时
+
 ## v2026.08.02-layout-tweak — 导入页布局调整
 
 - 「已导入频道」列表移到导入页最前面（状态栏 + 频道列表在上，导入工具在下）
