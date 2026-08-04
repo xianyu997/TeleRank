@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.08.04-mtproxy — MTProto 代理支持
+
+- Telegram 账号同步（MTProto）自动使用 Windows 系统代理（Clash/V2Ray），修复直连失败
+- 新增 `python-socks` 依赖；可用 `TELERANK_MT_PROXY` 覆盖代理地址
+
 ## v2026.08.04-bot-proxy — Bot 代理修复
 
 - Bot API 轮询自动使用 Windows 系统代理（Clash/V2Ray），修复 `api.telegram.org` 直连超时

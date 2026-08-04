@@ -9,6 +9,50 @@ import time
 from pathlib import Path
 
 
+def _system_http_proxy():
+    """Return an HTTP proxy URL from TELERANK_MT_PROXY or the Windows system proxy."""
+    raw = os.environ.get("TELERANK_MT_PROXY", "").strip()
+    if raw:
+        return raw
+    if os.name == "nt":
+        try:
+            import winreg
+
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+            ) as key:
+                enabled = int(winreg.QueryValueEx(key, "ProxyEnable")[0] or 0)
+                server = str(winreg.QueryValueEx(key, "ProxyServer")[0] or "")
+            if enabled and server and "=" not in server:
+                return server
+        except Exception:
+            pass
+    return ""
+
+
+def _mt_proxy_tuple():
+    """Build a Telethon-compatible proxy tuple for the MTProto connection."""
+    raw = _system_http_proxy()
+    if not raw:
+        return None
+    if "://" not in raw:
+        raw = "http://" + raw
+    scheme, _, rest = raw.partition("://")
+    hostport = rest.split("/", 1)[0]
+    host, _, port = hostport.rpartition(":")
+    if not host or not port.isdigit():
+        return None
+    scheme = scheme.lower()
+    if scheme in ("http", "https"):
+        return ("http", host, int(port), True)
+    if scheme in ("socks5", "socks"):
+        return ("socks5", host, int(port), True)
+    if scheme == "socks4":
+        return ("socks4", host, int(port), True)
+    return None
+
+
 class TelegramSyncService:
     def __init__(self, base_dir, archive_root, safe_folder_name, save_preferences):
         self.base_dir = Path(base_dir)
@@ -192,7 +236,13 @@ class TelegramSyncService:
         if not config.get("api_id") or not config.get("api_hash"):
             raise ValueError("Save the Telegram API configuration first")
         self.base_dir.mkdir(parents=True, exist_ok=True)
-        return TelegramClient(str(self.session_file), int(config["api_id"]), config["api_hash"])
+        proxy = _mt_proxy_tuple()
+        return TelegramClient(
+            str(self.session_file),
+            int(config["api_id"]),
+            config["api_hash"],
+            proxy=proxy,
+        )
 
     def send_code(self, phone):
         phone = re.sub(r"[\s\-()]+", "", str(phone or "").strip())

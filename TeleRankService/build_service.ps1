@@ -18,7 +18,7 @@ if (-not (Test-Path $VenvPython)) {
 
 Write-Host "Installing build dependencies..."
 & $VenvPython -m pip install --upgrade pip
-& $VenvPython -m pip install "pyinstaller>=6" "pywin32>=306" "telethon>=1.44,<2" "cryptg>=0.5"
+& $VenvPython -m pip install "pyinstaller>=6" "pywin32>=306" "telethon>=1.44,<2" "cryptg>=0.5" "python-socks>=2.4"
 if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
 
 Write-Host "Building TeleRankService.exe ..."

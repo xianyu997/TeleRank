@@ -19,6 +19,7 @@ cryptg_datas, cryptg_binaries, cryptg_hidden = collect_all("cryptg")
 hidden_imports = [
     "telegram_sync",
     "telegram_bot",
+    "python_socks",
     # pywin32 service stack
     "win32timezone",
     "win32serviceutil",
