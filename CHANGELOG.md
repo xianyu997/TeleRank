@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.08.04-parallel-download — 并行下载
+
+- 媒体下载改为按上限并行（默认 3，可配 1-10：界面「并行下载数」或 `TELERANK_DOWNLOAD_PARALLEL`）
+- 同步进度、断点落盘逻辑适配批量并行
+
 ## v2026.08.04-mtproxy — MTProto 代理支持
 
 - Telegram 账号同步（MTProto）自动使用 Windows 系统代理（Clash/V2Ray），修复直连失败

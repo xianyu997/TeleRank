@@ -102,6 +102,7 @@ class TelegramSyncService:
             "phone": config.get("phone", ""),
             "interval_minutes": config.get("interval_minutes", 15),
             "download_media": bool(config.get("download_media", True)),
+            "download_parallel": config.get("download_parallel", 3),
             "schedule_active": self._schedule_timer is not None,
             "next_sync_at": self._next_sync_at,
             "job": job,
@@ -205,9 +206,14 @@ class TelegramSyncService:
             interval = max(5, min(1440, int(body.get("interval_minutes", existing.get("interval_minutes", 15)))))
         except (TypeError, ValueError):
             interval = 15
+        try:
+            parallel = max(1, min(10, int(body.get("download_parallel", existing.get("download_parallel", 3)))))
+        except (TypeError, ValueError):
+            parallel = 3
         config = {
             "api_id": int(api_id), "api_hash": api_hash, "target": target,
             "interval_minutes": interval, "download_media": bool(body.get("download_media", existing.get("download_media", True))),
+            "download_parallel": parallel,
             "phone": str(body.get("phone", "")).strip() or str(existing.get("phone", "")).strip(),
             "bot_token": existing.get("bot_token", ""),
         }
@@ -381,6 +387,47 @@ class TelegramSyncService:
             if config.get("download_media"):
                 media_dir.mkdir(parents=True, exist_ok=True)
 
+            try:
+                parallel = int(config.get("download_parallel", 3) or 3)
+                parallel = int(os.environ.get("TELERANK_DOWNLOAD_PARALLEL", parallel))
+            except (TypeError, ValueError):
+                parallel = 3
+            parallel = max(1, min(10, parallel))
+            sem = asyncio.Semaphore(parallel)
+
+            async def _process_message(message, has_media):
+                nonlocal media_downloaded
+                media = []
+                if has_media and config.get("download_media"):
+                    media_name = str(getattr(getattr(message, "file", None), "name", "") or f"message-{message.id}")
+
+                    def _progress(current, total):
+                        now = time.monotonic()
+                        if current < total and now - self._last_progress_update < 0.15:
+                            return
+                        self._last_progress_update = now
+                        self._set_job(stage="downloading_media", message=f"Downloading {media_downloaded+1}", messages_scanned=scanned, media_downloaded=media_downloaded, media_current=media_name, media_bytes=int(current or 0), media_total_bytes=int(total or 0))
+
+                    async with sem:
+                        try:
+                            path = await client.download_media(message, file=str(media_dir), progress_callback=_progress)
+                            if path:
+                                media.append({"href": str(Path(path).relative_to(folder))})
+                                media_downloaded += 1
+                        except Exception:
+                            pass
+                link = f"https://t.me/{username}/{message.id}" if username else ""
+                records[int(message.id)] = {
+                    "id": message.id, "date": message.date.isoformat() if message.date else "",
+                    "from": getattr(getattr(message, "sender", None), "first_name", "") or title,
+                    "text": message.message or "", "reactions": self._reaction_counts(message),
+                    "media": media, "source_link": link,
+                }
+                return int(message.id)
+
+            batch = []
+            batch_size = max(3, parallel * 3)
+            last_checkpoint_write = 0
             async for message in client.iter_messages(entity, min_id=checkpoint, reverse=True):
                 if not message or not message.id:
                     continue
@@ -398,35 +445,24 @@ class TelegramSyncService:
                 if msg_media is not None and not has_media:
                     checkpoint = max(checkpoint, int(message.id))
                     continue
-                link = f"https://t.me/{username}/{message.id}" if username else ""
-                media = []
-                if has_media and config.get("download_media"):
-                    media_name = str(getattr(getattr(message, "file", None), "name", "") or f"message-{message.id}")
-                    def _progress(current, total):
-                        now = time.monotonic()
-                        if current < total and now - self._last_progress_update < 0.15:
-                            return
-                        self._last_progress_update = now
-                        self._set_job(stage="downloading_media", message=f"Downloading {media_downloaded+1}", messages_scanned=scanned, media_downloaded=media_downloaded, media_current=media_name, media_bytes=int(current or 0), media_total_bytes=int(total or 0))
-                    try:
-                        path = await client.download_media(message, file=str(media_dir), progress_callback=_progress)
-                        if path:
-                            media.append({"href": str(Path(path).relative_to(folder))})
-                            media_downloaded += 1
-                    except Exception:
-                        pass
-                records[int(message.id)] = {
-                    "id": message.id, "date": message.date.isoformat() if message.date else "",
-                    "from": getattr(getattr(message, "sender", None), "first_name", "") or title,
-                    "text": message.message or "", "reactions": self._reaction_counts(message),
-                    "media": media, "source_link": link,
-                }
-                checkpoint = max(checkpoint, int(message.id))
-                downloaded += 1
+                batch.append((message, has_media))
+                if len(batch) >= batch_size:
+                    ids = await asyncio.gather(*(_process_message(m, hm) for m, hm in batch))
+                    for mid in ids:
+                        downloaded += 1
+                        checkpoint = max(checkpoint, mid)
+                    batch.clear()
+                    self._set_job(stage="syncing", message="Scanning channel messages", progress=downloaded, messages_scanned=scanned, media_downloaded=media_downloaded, media_current="", media_bytes=0, media_total_bytes=0)
+                    if downloaded - last_checkpoint_write >= 500:
+                        # Crash-safe checkpoint: persist progress during long first syncs.
+                        self._write_channel_payload(data_file, title, records)
+                        last_checkpoint_write = downloaded
+            if batch:
+                ids = await asyncio.gather(*(_process_message(m, hm) for m, hm in batch))
+                for mid in ids:
+                    downloaded += 1
+                    checkpoint = max(checkpoint, mid)
                 self._set_job(stage="syncing", message="Scanning channel messages", progress=downloaded, messages_scanned=scanned, media_downloaded=media_downloaded, media_current="", media_bytes=0, media_total_bytes=0)
-                if downloaded % 500 == 0:
-                    # Crash-safe checkpoint: persist progress during long first syncs.
-                    self._write_channel_payload(data_file, title, records)
 
             # Only rewrite result.json when new content actually arrived.
             if len(records) != records_before:

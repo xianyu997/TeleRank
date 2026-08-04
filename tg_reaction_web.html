@@ -2038,6 +2038,7 @@
         <div class="field"><label for="telegramApiId">API ID（已配置时可留空）</label><input class="input" id="telegramApiId" inputmode="numeric" autocomplete="off"></div>
         <div class="field"><label for="telegramApiHash">API Hash（已配置时可留空）</label><input class="input" id="telegramApiHash" type="password" autocomplete="off"></div>
         <div class="field"><label for="telegramInterval">同步间隔（分钟，至少 5）</label><input class="input" id="telegramInterval" type="number" min="5" value="15"></div>
+        <div class="field"><label for="telegramParallel">并行下载数（1-10）</label><input class="input" id="telegramParallel" type="number" min="1" max="10" value="3"></div>
         <label class="check"><input id="telegramMedia" type="checkbox" checked><span>下载图片和其他媒体文件</span></label>
       </details>
       <div class="field"><label for="telegramCode">验证码</label><input class="input" id="telegramCode" inputmode="numeric" autocomplete="one-time-code"></div>
@@ -2447,7 +2448,7 @@
       lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxBackdrop: $("lightboxBackdrop"),
       channelModal: $("channelModal"), channelModalBackdrop: $("channelModalBackdrop"), channelUrlInput: $("channelUrlInput"),
       channelCurrent: $("channelCurrent"), channelApplyBtn: $("channelApplyBtn"), channelClearBtn: $("channelClearBtn"), channelCancelBtn: $("channelCancelBtn"),
-      telegramModal: $("telegramModal"), telegramModalBackdrop: $("telegramModalBackdrop"), telegramCancelBtn: $("telegramCancelBtn"), telegramApiId: $("telegramApiId"), telegramApiHash: $("telegramApiHash"), telegramPhone: $("telegramPhone"), telegramTarget: $("telegramTarget"), telegramInterval: $("telegramInterval"), telegramMedia: $("telegramMedia"), telegramCode: $("telegramCode"), telegramPassword: $("telegramPassword"), telegramStatus: $("telegramStatus"), telegramSaveBtn: $("telegramSaveBtn"), telegramSendCodeBtn: $("telegramSendCodeBtn"), telegramVerifyCodeBtn: $("telegramVerifyCodeBtn"), telegramVerifyPasswordBtn: $("telegramVerifyPasswordBtn"), telegramSyncNowBtn: $("telegramSyncNowBtn"), telegramBotToken: $("telegramBotToken"), telegramBotStatus: $("telegramBotStatus"),
+      telegramModal: $("telegramModal"), telegramModalBackdrop: $("telegramModalBackdrop"), telegramCancelBtn: $("telegramCancelBtn"), telegramApiId: $("telegramApiId"), telegramApiHash: $("telegramApiHash"), telegramPhone: $("telegramPhone"), telegramTarget: $("telegramTarget"), telegramInterval: $("telegramInterval"), telegramParallel: $("telegramParallel"), telegramMedia: $("telegramMedia"), telegramCode: $("telegramCode"), telegramPassword: $("telegramPassword"), telegramStatus: $("telegramStatus"), telegramSaveBtn: $("telegramSaveBtn"), telegramSendCodeBtn: $("telegramSendCodeBtn"), telegramVerifyCodeBtn: $("telegramVerifyCodeBtn"), telegramVerifyPasswordBtn: $("telegramVerifyPasswordBtn"), telegramSyncNowBtn: $("telegramSyncNowBtn"), telegramBotToken: $("telegramBotToken"), telegramBotStatus: $("telegramBotStatus"),
       includeForwarded: $("includeForwarded"),
       messageCount: $("messageCount"), reactionCount: $("reactionCount"),
       emojiCount: $("emojiCount"), topScore: $("topScore"),
@@ -4230,6 +4231,7 @@
       if (data.target) els.telegramTarget.value = `@${data.target}`;
       if (data.phone) els.telegramPhone.value = data.phone;
       if (data.interval_minutes) els.telegramInterval.value = data.interval_minutes;
+      if (data.download_parallel) els.telegramParallel.value = data.download_parallel;
       if (typeof data.download_media === "boolean") els.telegramMedia.checked = data.download_media;
       const job = data.job || {};
       renderTelegramProgress(job);
@@ -4273,7 +4275,7 @@
     function telegramConfigPayload() {
       const phone = els.telegramPhone.value.trim().replace(/[\s\-()]+/g, "");
       els.telegramPhone.value = phone;
-      return { api_id: els.telegramApiId.value.trim(), api_hash: els.telegramApiHash.value.trim(), phone, target: els.telegramTarget.value.trim(), interval_minutes: els.telegramInterval.value, download_media: els.telegramMedia.checked };
+      return { api_id: els.telegramApiId.value.trim(), api_hash: els.telegramApiHash.value.trim(), phone, target: els.telegramTarget.value.trim(), interval_minutes: els.telegramInterval.value, download_parallel: Math.min(10, Math.max(1, parseInt(els.telegramParallel.value, 10) || 3)), download_media: els.telegramMedia.checked };
     }
     async function saveTelegramConfig() {
       const data = await telegramRequest("/api/telegram/configure", telegramConfigPayload());

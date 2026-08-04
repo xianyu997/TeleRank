@@ -168,6 +168,24 @@ class SyncPayloadTests(unittest.TestCase):
         svc.stop_schedule()
         self.assertIsNone(svc._schedule_timer)
 
+    def test_configure_accepts_download_parallel(self):
+        svc = self.svc
+        svc.configure({
+            "api_id": "123456", "api_hash": "a" * 32, "target": "testchannel",
+            "download_parallel": "5",
+        })
+        self.assertEqual(svc.config().get("download_parallel"), 5)
+        svc.configure({
+            "api_id": "123456", "api_hash": "a" * 32, "target": "testchannel",
+            "download_parallel": "99",
+        })
+        self.assertEqual(svc.config().get("download_parallel"), 10)
+        svc.configure({
+            "api_id": "123456", "api_hash": "a" * 32, "target": "testchannel",
+            "download_parallel": "abc",
+        })
+        self.assertEqual(svc.config().get("download_parallel"), 3)
+
 
 class ServerSmokeTests(unittest.TestCase):
     @classmethod
