@@ -241,6 +241,38 @@ class BotCommandTests(unittest.TestCase):
         self.assertEqual(sync.calls, 2)
         self.assertTrue(any("批次完成" in m for m in bot.messages))
 
+    def test_folder_keyboard_lists_existing_folders(self):
+        root = Path(tempfile.mkdtemp(prefix="telrank-save-root-"))
+        (root / "folderA").mkdir()
+        (root / "folderB").mkdir()
+        os.environ["TELERANK_SAVE_ROOTS"] = str(root)
+        try:
+            bot = self._CmdBot(self._CmdSync())
+            flat = json.dumps(bot._folder_keyboard(0))
+            self.assertIn("folderA", flat)
+            self.assertIn("folderB", flat)
+        finally:
+            del os.environ["TELERANK_SAVE_ROOTS"]
+
+    def test_callback_existing_picks_folder(self):
+        root = Path(tempfile.mkdtemp(prefix="telrank-save-root-"))
+        (root / "folderA").mkdir()
+        os.environ["TELERANK_SAVE_ROOTS"] = str(root)
+        try:
+            bot = self._CmdBot(self._CmdSync())
+            bot._owner_id = 999
+            with bot._pending_lock:
+                bot._pending_save[1] = {"items": [{"link": "https://t.me/channel/123"}]}
+            bot._handle_callback({
+                "id": "c2", "data": "save:existing:0",
+                "from": {"id": 999},
+                "message": {"chat": {"id": 1}, "message_id": 6},
+            })
+            with bot._pending_lock:
+                self.assertNotIn(1, bot._pending_save)
+        finally:
+            del os.environ["TELERANK_SAVE_ROOTS"]
+
 
 class SyncPayloadTests(unittest.TestCase):
     def setUp(self):

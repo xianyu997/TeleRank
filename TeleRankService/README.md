@@ -81,6 +81,10 @@ sc.exe start TeleRankService            # 启动
   下载该条消息的视频/图片，同样走文件夹选择流程
 - **批量转发**：短时间内连续转发多个视频（或相册/多条链接），会合并为一批，
   只问一次保存位置，然后依次下载全部并汇报进度
+- **保存到现有文件夹**：选择时默认列出下载根目录、博主文件夹
+  （`D:\smb\08_旧资料\old博主`）和导入目录（`D:\TelegramReactionRanker\Imports`）
+  下的所有文件夹，带分页；可用 `TELERANK_SAVE_ROOTS`（分号分隔）或
+  preferences 的 `save_roots` 自定义候选根目录
 - 下载根目录默认 `D:\TelegramReactionRanker\Downloads`，
   可用环境变量 `TELERANK_DOWNLOAD_ROOT` 或 preferences 的 `download_root` 修改
 ```

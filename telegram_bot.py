@@ -250,17 +250,66 @@ class TelegramBotListener:
             pass
         return Path(r"D:\TelegramReactionRanker\Downloads")
 
-    def _folder_keyboard(self):
-        root = self._download_root()
-        folders = sorted([p for p in root.iterdir() if p.is_dir()]) if root.exists() else []
+    def _download_roots(self):
+        """Roots whose subfolders are offered as 'existing folder' targets."""
+        env = os.environ.get("TELERANK_SAVE_ROOTS", "").strip()
+        if env:
+            return [Path(p.strip()) for p in env.split(";") if p.strip()]
+        try:
+            prefs = self._sync._read_json(self._sync.base_dir / "preferences.json", {})
+            roots = prefs.get("save_roots") or []
+            if roots:
+                return [Path(str(p)) for p in roots]
+        except Exception:  # noqa: BLE001
+            pass
+        roots = [self._download_root()]
+        for extra in (r"D:\smb\08_旧资料\old博主", r"D:\TelegramReactionRanker\Imports"):
+            candidate = Path(extra)
+            if candidate.exists():
+                roots.append(candidate)
+        return roots
+
+    def _folder_keyboard(self, page=0):
+        entries = []
+        for root in self._download_roots():
+            if not root.exists():
+                continue
+            root_label = root.name or str(root)
+            for folder in sorted([p for p in root.iterdir() if p.is_dir()]):
+                entries.append((folder, root_label))
+        total = len(entries)
+        start = page * self.FOLDER_PAGE_SIZE
+        page_entries = entries[start:start + self.FOLDER_PAGE_SIZE]
         rows = []
-        for i, folder in enumerate(folders[:20]):
-            rows.append([{"text": "📂 " + folder.name[:38], "callback_data": f"save:existing:{i}"}])
+        for i, (folder, root_label) in enumerate(page_entries):
+            idx = start + i
+            text = "📂 " + folder.name[:36]
+            if root_label and root_label != "Downloads":
+                text = f"📂 [{root_label}] " + folder.name[:30]
+            rows.append([{"text": text, "callback_data": f"save:existing:{idx}"}])
+        nav = []
+        if page > 0:
+            nav.append({"text": "⬅ 上一页", "callback_data": f"save:page:{page - 1}"})
+        if start + self.FOLDER_PAGE_SIZE < total:
+            nav.append({"text": "下一页 ➡", "callback_data": f"save:page:{page + 1}"})
+        if nav:
+            rows.append(nav)
         rows.append([
             {"text": "📁 新建文件夹", "callback_data": "save:new"},
             {"text": "❌ 取消", "callback_data": "save:cancel"},
         ])
         return {"inline_keyboard": rows}
+
+    FOLDER_PAGE_SIZE = 15
+
+    def _existing_folder_entries(self):
+        entries = []
+        for root in self._download_roots():
+            if not root.exists():
+                continue
+            for folder in sorted([p for p in root.iterdir() if p.is_dir()]):
+                entries.append(folder)
+        return entries
 
     BATCH_WINDOW_SECONDS = 6
 
@@ -293,19 +342,20 @@ class TelegramBotListener:
                 self._pending_save[chat_id] = existing
                 question_id = None
         count = len(existing["items"])
+        question_text = f"📥 收到 {count} 个视频，保存到哪里？"
         if question_id:
             try:
                 self._api("editMessageText", {
                     "chat_id": chat_id,
                     "message_id": question_id,
-                    "text": f"📥 收到 {count} 个视频，保存到哪里？",
+                    "text": question_text,
                 })
                 return
             except Exception:  # noqa: BLE001
                 pass
         msg_id = self._send_message(
             chat_id,
-            f"📥 收到 {count} 个视频，保存到哪里？",
+            question_text,
             reply_markup=self._folder_keyboard(),
         )
         if msg_id:
@@ -313,6 +363,7 @@ class TelegramBotListener:
                 pending = self._pending_save.get(chat_id)
                 if pending:
                     pending["question_message_id"] = msg_id
+                    pending["question_text"] = question_text
 
     def _start_save_to_folder(self, chat_id, pending, folder):
         with self._pending_lock:
@@ -382,7 +433,7 @@ class TelegramBotListener:
                 self._api("editMessageText", {
                     "chat_id": chat_id,
                     "message_id": message_id,
-                    "text": "请输入新文件夹名称（不要包含 \\ / : * ? \" < > |）：",
+                    "text": "请输入新文件夹名称（将创建在下载根目录下，不要包含 \\ / : * ? \" < > |）：",
                 })
             except Exception:  # noqa: BLE001
                 pass
@@ -393,13 +444,28 @@ class TelegramBotListener:
                 self._api("editMessageText", {"chat_id": chat_id, "message_id": message_id, "text": "已取消。"})
             except Exception:  # noqa: BLE001
                 pass
+        elif data.startswith("save:page:"):
+            try:
+                page = int(data.rsplit(":", 1)[1])
+            except ValueError:
+                return
+            with self._pending_lock:
+                pending = self._pending_save.get(chat_id, {})
+            try:
+                self._api("editMessageText", {
+                    "chat_id": chat_id,
+                    "message_id": message_id,
+                    "text": pending.get("question_text") or "选择保存位置：",
+                    "reply_markup": self._folder_keyboard(page),
+                })
+            except Exception:  # noqa: BLE001
+                pass
         elif data.startswith("save:existing:"):
             try:
                 idx = int(data.rsplit(":", 1)[1])
             except ValueError:
                 return
-            root = self._download_root()
-            folders = sorted([p for p in root.iterdir() if p.is_dir()]) if root.exists() else []
+            folders = self._existing_folder_entries()
             if idx < 0 or idx >= len(folders):
                 return
             with self._pending_lock:
@@ -408,7 +474,7 @@ class TelegramBotListener:
                 self._api("editMessageText", {
                     "chat_id": chat_id,
                     "message_id": message_id,
-                    "text": f"⏳ 正在下载到 {folders[idx].name} …",
+                    "text": f"⏳ 正在下载到 {folders[idx]} …",
                 })
             except Exception:  # noqa: BLE001
                 pass

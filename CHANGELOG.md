@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.08.09-save-existing — 保存到现有文件夹
+
+- 「已有文件夹」列表默认包含下载根目录、博主文件夹（old博主）、导入目录，带分页
+- 可用 `TELERANK_SAVE_ROOTS`（分号分隔）或 preferences `save_roots` 自定义候选根目录
+- 默认下载根目录 `D:\TelegramReactionRanker\Downloads` 已创建
+
 ## v2026.08.09-video-batch — 多视频批量保存
 
 - 短时间内连续转发的多个视频（或相册/多条链接）合并为一个批次，只问一次保存位置
