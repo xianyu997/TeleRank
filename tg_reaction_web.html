@@ -1091,6 +1091,17 @@
       box-shadow: 0 28px 80px rgba(0,0,0,.5);
       animation: imageIn var(--motion) var(--ease-pop);
     }
+    .lightbox-video {
+      position: relative;
+      z-index: 1;
+      max-width: 96vw;
+      max-height: 94vh;
+      width: auto;
+      border-radius: 8px;
+      box-shadow: 0 28px 80px rgba(0,0,0,.5);
+      background: #000;
+      animation: imageIn var(--motion) var(--ease-pop);
+    }
     .reel-media {
       position: absolute;
       inset: 0;
@@ -2026,6 +2037,11 @@
     <img class="lightbox-img" id="lightboxImg" alt="">
   </div>
 
+  <div class="lightbox" id="videoLightbox" hidden>
+    <div class="lightbox-backdrop" id="videoLightboxBackdrop"></div>
+    <video class="lightbox-video" id="videoLightboxVideo" controls playsinline preload="metadata"></video>
+  </div>
+
   <div class="modal" id="channelModal" hidden>
     <div class="modal-backdrop" id="channelModalBackdrop"></div>
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="channelModalTitle">
@@ -2478,6 +2494,7 @@
       viewerToggle: $("viewerToggle"), viewerControls: $("viewerControls"),
       historyList: $("historyList"), refreshImportsBtn: $("refreshImportsBtn"), channelSearch: $("channelSearch"), channelCount: $("channelCount"), matrixGallery: $("matrixGallery"),
       lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxBackdrop: $("lightboxBackdrop"),
+      videoLightbox: $("videoLightbox"), videoLightboxBackdrop: $("videoLightboxBackdrop"), videoLightboxVideo: $("videoLightboxVideo"),
       channelModal: $("channelModal"), channelModalBackdrop: $("channelModalBackdrop"), channelUrlInput: $("channelUrlInput"),
       channelCurrent: $("channelCurrent"), channelApplyBtn: $("channelApplyBtn"), channelClearBtn: $("channelClearBtn"), channelCancelBtn: $("channelCancelBtn"),
       telegramModal: $("telegramModal"), telegramModalBackdrop: $("telegramModalBackdrop"), telegramCancelBtn: $("telegramCancelBtn"), telegramApiId: $("telegramApiId"), telegramApiHash: $("telegramApiHash"), telegramPhone: $("telegramPhone"), telegramTarget: $("telegramTarget"), telegramInterval: $("telegramInterval"), telegramParallel: $("telegramParallel"), telegramMedia: $("telegramMedia"), telegramCode: $("telegramCode"), telegramPassword: $("telegramPassword"), telegramStatus: $("telegramStatus"), telegramSaveBtn: $("telegramSaveBtn"), telegramSendCodeBtn: $("telegramSendCodeBtn"), telegramVerifyCodeBtn: $("telegramVerifyCodeBtn"), telegramVerifyPasswordBtn: $("telegramVerifyPasswordBtn"), telegramSyncNowBtn: $("telegramSyncNowBtn"), telegramBotToken: $("telegramBotToken"), telegramBotStatus: $("telegramBotStatus"),
@@ -2650,12 +2667,33 @@
           if (entry.is_dir) {
             return `<button class="files-row" type="button" data-files-open="${esc(entry.path)}"><span class="files-icon">📁</span><span class="files-name">${safeName}</span><span class="files-size">文件夹</span></button>`;
           }
+          const isVideo = /\.(mp4|mkv|mov|webm|avi|3gp|m4v|flv)$/i.test(entry.name);
+          const isImage = /\.(jpe?g|png|gif|webp|bmp)$/i.test(entry.name);
+          if (isVideo || isImage) {
+            const kind = isVideo ? "video" : "image";
+            return `<div class="files-row"><span class="files-icon">${isVideo ? "🎬" : "🖼"}</span><button class="files-name files-play" type="button" data-files-media="${esc(entry.path)}" data-files-kind="${kind}">${safeName}</button><span class="files-size">${fmtBytes(entry.size)}</span><a class="files-dl btn secondary history-mini" href="${esc(url)}" download>⬇</a></div>`;
+          }
           return `<div class="files-row"><span class="files-icon">📄</span><a class="files-name" href="${esc(url)}" target="_blank" rel="noopener">${safeName}</a><span class="files-size">${fmtBytes(entry.size)}</span><a class="files-dl btn secondary history-mini" href="${esc(url)}" download>⬇</a></div>`;
         }).join("");
         els.filesList.innerHTML = rows || `<div class="import-note">${esc(t("files.empty"))}</div>`;
       } catch (error) {
         setStatus(error.message || String(error), true);
       }
+    }
+    function openVideoFile(path) {
+      if (!path || !els.videoLightboxVideo) return;
+      els.videoLightboxVideo.src = `/api/file?path=${encodeURIComponent(path)}`;
+      showModal(els.videoLightbox);
+      els.videoLightboxVideo.play().catch(() => {});
+    }
+    function closeVideoFile() {
+      hideModal(els.videoLightbox);
+      try { els.videoLightboxVideo.pause(); } catch (_) {}
+      els.videoLightboxVideo.removeAttribute("src");
+      els.videoLightboxVideo.load();
+    }
+    function openImageFile(path) {
+      openLightbox(`/api/file?path=${encodeURIComponent(path)}`);
     }
     function setTheme(theme) {
       document.documentElement.dataset.theme = theme;
@@ -4448,6 +4486,12 @@
     els.mobileFilesPageBtn?.addEventListener("click", () => setPage("files"));
     els.mobileChannelBtn?.addEventListener("click", openChannelModal);
     els.filesList.addEventListener("click", (event) => {
+      const media = event.target.closest("[data-files-media]");
+      if (media) {
+        if (media.dataset.filesKind === "video") openVideoFile(media.dataset.filesMedia);
+        else openImageFile(media.dataset.filesMedia);
+        return;
+      }
       const dir = event.target.closest("[data-files-open]");
       if (dir) renderFiles(dir.dataset.filesOpen);
     });
@@ -4456,6 +4500,7 @@
       const path = els.filesZipBtn.dataset.path || "";
       if (path) window.open(`/api/zip?path=${encodeURIComponent(path)}`, "_blank");
     });
+    els.videoLightboxBackdrop?.addEventListener("click", closeVideoFile);
     els.viewerToggle.addEventListener("click", () => els.viewerControls.classList.toggle("open"));
     els.themeBtn.addEventListener("click", toggleTheme);
     els.settingsBtn?.addEventListener("click", (event) => {
@@ -4598,6 +4643,10 @@
       }
       if (event.key === "Escape" && !els.lightbox.hidden) {
         closeLightbox();
+        return;
+      }
+      if (event.key === "Escape" && !els.videoLightbox.hidden) {
+        closeVideoFile();
         return;
       }
       if (els.viewerPage.hidden) return;
