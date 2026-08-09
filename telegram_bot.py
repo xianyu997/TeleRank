@@ -6,6 +6,7 @@ import re
 import threading
 import time
 import urllib.request
+from pathlib import Path
 
 # macOS system proxy detection — PyInstaller apps may not auto-detect
 def _build_opener():
@@ -78,6 +79,7 @@ class TelegramBotListener:
         self._import_sem = threading.BoundedSemaphore(2)
         self._importing = set()
         self._importing_lock = threading.Lock()
+        self._owner_id = None
 
     # ── Bot API helpers ──────────────────────────────────────────
 
@@ -232,8 +234,13 @@ class TelegramBotListener:
                     msg = update.get("message") or update.get("channel_post")
                     if not msg:
                         continue
+                    if not self._is_owner(msg):
+                        continue
                     chat_id = msg["chat"]["id"]
                     text = msg.get("text") or msg.get("caption") or ""
+                    if text.strip().startswith("/"):
+                        self._handle_commands(chat_id, text)
+                        continue
                     links = self._extract_links(text)
                     if not links:
                         continue
@@ -252,6 +259,97 @@ class TelegramBotListener:
             except Exception as exc:
                 self._last_error = str(exc)
                 time.sleep(5)
+
+    # ── Remote control commands (owner only) ─────────────────────
+
+    def _is_owner(self, msg):
+        sender_id = (msg.get("from") or {}).get("id")
+        if not sender_id:
+            return False
+        if self._owner_id is None:
+            try:
+                self._owner_id = self._sync.owner_id()
+            except Exception:  # noqa: BLE001
+                self._owner_id = None
+        return self._owner_id is not None and sender_id == self._owner_id
+
+    def _handle_commands(self, chat_id, text):
+        cmd = text.strip().split()[0].lower()
+        if cmd in ("/help", "/start"):
+            self._send_message(
+                chat_id,
+                "📋 TG Reaction Ranker 远程控制\n\n"
+                "/status — 服务与下载状态\n"
+                "/channels — 已导入频道列表\n"
+                "/download <链接> — 下载频道\n"
+                "/stop — 停止当前下载\n\n"
+                "直接发送频道链接也会自动下载。",
+            )
+        elif cmd == "/status":
+            self._send_message(chat_id, self._status_text())
+        elif cmd == "/channels":
+            self._send_message(chat_id, self._channels_text())
+        elif cmd == "/stop":
+            result = self._sync.stop_sync()
+            if result.get("ok"):
+                self._send_message(chat_id, "⏹ 正在停止当前任务…")
+            else:
+                self._send_message(chat_id, "ℹ️ " + result.get("message", "当前没有运行中的任务"))
+        elif cmd == "/download":
+            rest = text[len(cmd):].strip()
+            targets = self._extract_links(rest)
+            if not targets:
+                self._send_message(chat_id, "请附上频道链接，例如：/download https://t.me/channel")
+                return
+            for target in targets[:3]:
+                with self._importing_lock:
+                    if target in self._importing:
+                        continue
+                    self._importing.add(target)
+                threading.Thread(target=self._import_and_track, args=(chat_id, target), daemon=True).start()
+        else:
+            self._send_message(chat_id, f"未知命令：{cmd}\n发送 /help 查看可用命令。")
+
+    def _status_text(self):
+        try:
+            st = self._sync.public_status()
+        except Exception as exc:  # noqa: BLE001
+            return f"状态获取失败：{exc}"
+        lines = ["📊 TG Reaction Ranker 状态"]
+        lines.append("账号登录：" + ("✅" if st.get("authorized") else "❌"))
+        lines.append("当前目标：" + (st.get("target") or "未设置"))
+        job = st.get("job") or {}
+        stage = job.get("stage", "idle")
+        msg = job.get("message", "")
+        lines.append("任务：" + stage + (f"（{msg}）" if msg else ""))
+        if job.get("progress"):
+            lines.append(f"进度：{job.get('progress')} 条消息，{job.get('media_downloaded', 0)} 个媒体")
+        lines.append("并行下载：" + str(st.get("download_parallel", 3)))
+        lines.append("定时同步：" + ("开启" if st.get("schedule_active") else "关闭"))
+        lines.append("Bot：" + ("在线 ✅" if st.get("bot", {}).get("running") else "离线 ❌"))
+        return "\n".join(lines)
+
+    def _channels_text(self):
+        root = Path(self._sync.archive_root)
+        if not root.exists():
+            return "还没有导入任何频道。"
+        dirs = [p for p in sorted(root.iterdir()) if p.is_dir()]
+        if not dirs:
+            return "还没有导入任何频道。"
+        lines = [f"📁 已导入频道（{len(dirs)}）"]
+        for path in dirs[:30]:
+            count = ""
+            result_file = path / "result.json"
+            if result_file.exists():
+                try:
+                    data = json.loads(result_file.read_text(encoding="utf-8"))
+                    count = f"（{len(data.get('messages', []))} 条）"
+                except Exception:  # noqa: BLE001
+                    pass
+            lines.append("• " + path.name + count)
+        if len(dirs) > 30:
+            lines.append(f"…还有 {len(dirs) - 30} 个")
+        return "\n".join(lines)
 
     # ── Public API ───────────────────────────────────────────────
 

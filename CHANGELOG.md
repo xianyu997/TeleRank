@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.08.09-remote-control — Telegram 手机远程控制
+
+- Bot 新增远程控制命令：`/help` `/status` `/channels` `/download <链接>` `/stop`
+- Bot 仅响应你自己的 Telegram 账号（自动通过登录账号识别），其他人无法使用
+- 同步任务支持中途停止（/stop）
+
 ## v2026.08.09-no-video-popup — 移除播放失败弹窗
 
 - 彻底移除「该视频无法在此设备上播放」弹窗，视频无法播放时不再弹任何提示

@@ -68,6 +68,8 @@ class TelegramSyncService:
         self.timer = None
         self._schedule_timer = None
         self._next_sync_at = None
+        self._cancel_event = threading.Event()
+        self._owner_id_cache = None
         self._last_progress_update = 0.0
 
     def _read_json(self, path, fallback):
@@ -339,7 +341,38 @@ class TelegramSyncService:
         except Exception as exc:
             self._set_job(running=False, stage="error", message=str(exc))
         else:
-            self._set_job(running=False, stage="ready", message="Sync complete")
+            if self._cancel_event.is_set():
+                self._set_job(running=False, stage="stopped", message="Sync stopped by user")
+            else:
+                self._set_job(running=False, stage="ready", message="Sync complete")
+
+    def stop_sync(self):
+        """Cancel the currently running sync (checked between batches)."""
+        with self.lock:
+            running = self.job["running"]
+        if not running:
+            return {"ok": False, "message": "当前没有正在运行的任务"}
+        self._cancel_event.set()
+        self._set_job(stage="stopping", message="正在停止…")
+        return {"ok": True, "message": "正在停止"}
+
+    def owner_id(self):
+        """Telegram user id of the logged-in account (used to lock the bot)."""
+        if self._owner_id_cache:
+            return self._owner_id_cache
+        try:
+            client = self._client()
+
+            async def _fetch():
+                await client.connect()
+                me = await client.get_me()
+                await client.disconnect()
+                return me.id
+
+            self._owner_id_cache = asyncio.run(_fetch())
+        except Exception:
+            self._owner_id_cache = None
+        return self._owner_id_cache
 
     def _write_channel_payload(self, data_file, title, records):
         """Write the full channel result.json (sorted by message id)."""
@@ -360,6 +393,7 @@ class TelegramSyncService:
     async def _sync(self):
         config = self.config()
         client = self._client()
+        self._cancel_event.clear()
         try:
             await client.connect()
             if not await client.is_user_authorized():
@@ -429,6 +463,8 @@ class TelegramSyncService:
             batch_size = max(3, parallel * 3)
             last_checkpoint_write = 0
             async for message in client.iter_messages(entity, min_id=checkpoint, reverse=True):
+                if self._cancel_event.is_set():
+                    break
                 if not message or not message.id:
                     continue
                 scanned += 1
@@ -472,6 +508,9 @@ class TelegramSyncService:
             prefs = self._read_json(self.base_dir / "preferences.json", {})
             prefs["last_import_path"] = str(folder)
             self.save_preferences(prefs)
-            self._set_job(stage="ready", message=f"Imported {downloaded} messages and {media_downloaded} media files", progress=downloaded, total=downloaded, messages_scanned=scanned, media_downloaded=media_downloaded, media_current="", media_bytes=0, media_total_bytes=0)
+            if self._cancel_event.is_set():
+                self._set_job(stage="stopped", message=f"Stopped by user after {downloaded} messages and {media_downloaded} media files", progress=downloaded, total=downloaded, messages_scanned=scanned, media_downloaded=media_downloaded, media_current="", media_bytes=0, media_total_bytes=0)
+            else:
+                self._set_job(stage="ready", message=f"Imported {downloaded} messages and {media_downloaded} media files", progress=downloaded, total=downloaded, messages_scanned=scanned, media_downloaded=media_downloaded, media_current="", media_bytes=0, media_total_bytes=0)
         finally:
             await client.disconnect()

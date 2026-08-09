@@ -136,6 +136,54 @@ class BotMessageTests(unittest.TestCase):
         self.assertIn("下载完成", combined)
 
 
+class BotCommandTests(unittest.TestCase):
+    class _CmdSync:
+        def __init__(self):
+            self.lock = threading.Lock()
+            self.archive_root = "C:\\tmp\\imports"
+            self.job = {"running": True, "stage": "syncing", "message": "Scanning", "progress": 12, "media_downloaded": 3}
+            self.stop_called = False
+
+        def public_status(self):
+            return {
+                "ok": True, "authorized": True, "target": "testchannel",
+                "download_parallel": 3, "schedule_active": False,
+                "job": dict(self.job), "bot": {"running": True},
+            }
+
+        def stop_sync(self):
+            self.stop_called = True
+            return {"ok": True, "message": "正在停止"}
+
+    class _CmdBot(TelegramBotListener):
+        def __init__(self, sync):
+            super().__init__("123456:" + "A" * 35, sync)
+            self.messages = []
+
+        def _send_message(self, chat_id, text):
+            self.messages.append(text)
+
+        def _api(self, method, data=None):
+            return {"ok": True, "result": {"message_id": 1}}
+
+    def test_status_command(self):
+        bot = self._CmdBot(self._CmdSync())
+        bot._handle_commands(1, "/status")
+        self.assertTrue(any("状态" in m for m in bot.messages))
+
+    def test_stop_command(self):
+        sync = self._CmdSync()
+        bot = self._CmdBot(sync)
+        bot._handle_commands(1, "/stop")
+        self.assertTrue(sync.stop_called)
+        self.assertTrue(any("停止" in m for m in bot.messages))
+
+    def test_unknown_command(self):
+        bot = self._CmdBot(self._CmdSync())
+        bot._handle_commands(1, "/foo")
+        self.assertTrue(any("未知命令" in m for m in bot.messages))
+
+
 class SyncPayloadTests(unittest.TestCase):
     def setUp(self):
         self.base = Path(tempfile.mkdtemp(prefix="telrank-sync-"))
@@ -185,6 +233,16 @@ class SyncPayloadTests(unittest.TestCase):
             "download_parallel": "abc",
         })
         self.assertEqual(svc.config().get("download_parallel"), 3)
+
+    def test_stop_sync_only_when_running(self):
+        svc = self.svc
+        result = svc.stop_sync()
+        self.assertFalse(result["ok"])
+        with svc.lock:
+            svc.job["running"] = True
+        result = svc.stop_sync()
+        self.assertTrue(result["ok"])
+        self.assertTrue(svc._cancel_event.is_set())
 
 
 class ServerSmokeTests(unittest.TestCase):

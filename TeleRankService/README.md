@@ -57,6 +57,21 @@ sc.exe start TeleRankService            # 启动
 .\TeleRankService.exe --status
 .\TeleRankService.exe --run     # 前台模式（等同于双击，也会打开浏览器）
 .\stop_service.ps1              # 停止手动启动的后台实例（服务模式用 sc.exe stop）
+
+## 手机远程控制（Telegram Bot）
+
+在 Telegram 里打开 Bot（@Tir10057bot），发送以下命令即可远程控制：
+
+| 命令 | 作用 |
+| --- | --- |
+| `/help` | 显示命令列表 |
+| `/status` | 服务/账号/下载状态 |
+| `/channels` | 已导入频道列表 |
+| `/download <链接>` | 下载指定频道 |
+| `/stop` | 停止当前下载 |
+
+直接发送频道链接（或转发）也会自动下载。Bot 只响应你自己的 Telegram 账号
+（通过登录账号自动识别），其他人无法使用。
 ```
 
 ## 卸载
