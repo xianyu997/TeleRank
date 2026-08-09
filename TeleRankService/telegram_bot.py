@@ -83,6 +83,7 @@ class TelegramBotListener:
         self._owner_id = None
         self._pending_save = {}
         self._pending_lock = threading.Lock()
+        self._batch = {}
 
     # ── Bot API helpers ──────────────────────────────────────────
 
@@ -101,9 +102,10 @@ class TelegramBotListener:
         if reply_markup:
             payload["reply_markup"] = reply_markup
         try:
-            self._api("sendMessage", payload)
+            sent = self._api("sendMessage", payload)
+            return (sent.get("result") or {}).get("message_id")
         except Exception:
-            pass
+            return None
 
     def _edit_message(self, chat_id, message_id, text):
         try:
@@ -260,14 +262,57 @@ class TelegramBotListener:
         ])
         return {"inline_keyboard": rows}
 
+    BATCH_WINDOW_SECONDS = 6
+
     def _begin_media_save(self, chat_id, **media):
+        """Collect videos forwarded within a short window into one batch."""
         with self._pending_lock:
-            self._pending_save[chat_id] = media
-        self._send_message(
+            batch = self._batch.get(chat_id)
+            if batch is None:
+                batch = {"items": [], "timer": None}
+                self._batch[chat_id] = batch
+            batch["items"].append(media)
+            if batch["timer"]:
+                batch["timer"].cancel()
+            batch["timer"] = threading.Timer(self.BATCH_WINDOW_SECONDS, self._flush_batch, args=(chat_id,))
+            batch["timer"].daemon = True
+            batch["timer"].start()
+
+    def _flush_batch(self, chat_id):
+        with self._pending_lock:
+            batch = self._batch.pop(chat_id, None)
+            if not batch or not batch["items"]:
+                return
+            items = batch["items"]
+            existing = self._pending_save.get(chat_id)
+            if existing:
+                existing["items"].extend(items)
+                question_id = existing.get("question_message_id")
+            else:
+                existing = {"items": items}
+                self._pending_save[chat_id] = existing
+                question_id = None
+        count = len(existing["items"])
+        if question_id:
+            try:
+                self._api("editMessageText", {
+                    "chat_id": chat_id,
+                    "message_id": question_id,
+                    "text": f"📥 收到 {count} 个视频，保存到哪里？",
+                })
+                return
+            except Exception:  # noqa: BLE001
+                pass
+        msg_id = self._send_message(
             chat_id,
-            "📥 收到视频，保存到哪里？",
+            f"📥 收到 {count} 个视频，保存到哪里？",
             reply_markup=self._folder_keyboard(),
         )
+        if msg_id:
+            with self._pending_lock:
+                pending = self._pending_save.get(chat_id)
+                if pending:
+                    pending["question_message_id"] = msg_id
 
     def _start_save_to_folder(self, chat_id, pending, folder):
         with self._pending_lock:
@@ -275,16 +320,28 @@ class TelegramBotListener:
         threading.Thread(target=self._save_worker, args=(chat_id, pending, folder), daemon=True).start()
 
     def _save_worker(self, chat_id, pending, folder):
+        items = pending.get("items") if isinstance(pending, dict) and "items" in pending else [pending]
+        total = len(items)
+        saved = []
         try:
-            if pending.get("link"):
-                path = self._sync.download_message_media(pending["link"], folder)
-            elif pending.get("file_id"):
-                path = self._download_bot_file(pending["file_id"], folder)
+            for i, item in enumerate(items, 1):
+                if item.get("link"):
+                    path = self._sync.download_message_media(item["link"], folder)
+                elif item.get("file_id"):
+                    path = self._download_bot_file(item["file_id"], folder)
+                else:
+                    continue
+                saved.append(path)
+                if total > 1:
+                    self._send_message(chat_id, f"⏳ 已下载 {i}/{total}")
+            if not saved:
+                self._send_message(chat_id, "❌ 没有可下载的内容")
+            elif total > 1:
+                self._send_message(chat_id, f"✅ 批次完成：{len(saved)}/{total} 个已保存到 {folder}")
             else:
-                raise RuntimeError("缺少下载信息")
-            self._send_message(chat_id, f"✅ 已保存：{path}")
+                self._send_message(chat_id, f"✅ 已保存：{saved[0]}")
         except Exception as exc:  # noqa: BLE001
-            self._send_message(chat_id, f"❌ 下载失败：{exc}")
+            self._send_message(chat_id, f"❌ 下载失败（已完成 {len(saved)}/{total}）：{exc}")
 
     def _download_bot_file(self, file_id, dest_dir):
         info = self._api("getFile", {"file_id": file_id})

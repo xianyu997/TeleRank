@@ -191,16 +191,22 @@ class BotCommandTests(unittest.TestCase):
         self.assertIn(("998877", 66), links)
         self.assertEqual(TelegramBotListener._extract_message_links("https://t.me/plainchannel"), [])
 
-    def test_begin_media_save_sends_keyboard(self):
+    def test_begin_media_save_batches_multiple(self):
         bot = self._CmdBot(self._CmdSync())
         bot._begin_media_save(1, link="https://t.me/channel/123")
-        self.assertTrue(any("保存" in m for m in bot.messages))
+        bot._begin_media_save(1, link="https://t.me/channel/456")
         with bot._pending_lock:
-            self.assertIn(1, bot._pending_save)
+            bot._batch[1]["timer"].cancel()
+        bot._flush_batch(1)
+        self.assertTrue(any("2 个视频" in m for m in bot.messages))
+        with bot._pending_lock:
+            self.assertEqual(len(bot._pending_save[1]["items"]), 2)
 
     def test_callback_new_sets_awaiting_name(self):
         bot = self._CmdBot(self._CmdSync())
         bot._owner_id = 999
+        with bot._pending_lock:
+            bot._pending_save[1] = {"items": [{"link": "https://t.me/channel/123"}]}
         bot._handle_callback({
             "id": "c1", "data": "save:new",
             "from": {"id": 999},
@@ -217,6 +223,23 @@ class BotCommandTests(unittest.TestCase):
         bot = self._CmdBot(SaveSync())
         bot._save_worker(1, {"link": "https://t.me/channel/123"}, "C:\\tmp")
         self.assertTrue(any("已保存" in m for m in bot.messages))
+
+    def test_save_worker_batch(self):
+        class SaveSync(self._CmdSync):
+            def __init__(self):
+                super().__init__()
+                self.calls = 0
+
+            def download_message_media(self, link, dest_dir):
+                self.calls += 1
+                return f"C:\\tmp\\v{self.calls}.mp4"
+
+        sync = SaveSync()
+        bot = self._CmdBot(sync)
+        pending = {"items": [{"link": "https://t.me/channel/1"}, {"link": "https://t.me/channel/2"}]}
+        bot._save_worker(1, pending, "C:\\tmp")
+        self.assertEqual(sync.calls, 2)
+        self.assertTrue(any("批次完成" in m for m in bot.messages))
 
 
 class SyncPayloadTests(unittest.TestCase):

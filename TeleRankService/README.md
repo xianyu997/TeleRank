@@ -79,6 +79,8 @@ sc.exe start TeleRankService            # 启动
   或「📂 已有文件夹」（点选列表），下载完成后通知你
 - **发送带消息编号的链接**（`https://t.me/频道/消息ID` 或 `https://t.me/c/频道ID/消息ID`）：
   下载该条消息的视频/图片，同样走文件夹选择流程
+- **批量转发**：短时间内连续转发多个视频（或相册/多条链接），会合并为一批，
+  只问一次保存位置，然后依次下载全部并汇报进度
 - 下载根目录默认 `D:\TelegramReactionRanker\Downloads`，
   可用环境变量 `TELERANK_DOWNLOAD_ROOT` 或 preferences 的 `download_root` 修改
 ```
