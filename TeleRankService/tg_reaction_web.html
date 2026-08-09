@@ -2080,7 +2080,10 @@
     <video class="lightbox-video" id="videoLightboxVideo" controls playsinline preload="metadata"></video>
     <div class="lightbox-error" id="videoLightboxError" hidden>
       <p id="videoLightboxErrorText">该视频无法在此设备上播放。</p>
-      <a class="btn" id="videoLightboxErrorDl" href="#" download>⬇ 下载后观看</a>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn" id="videoLightboxRetry" type="button">🔄 重试</button>
+        <a class="btn" id="videoLightboxErrorDl" href="#" download>⬇ 下载后观看</a>
+      </div>
     </div>
     <button class="lightbox-close" id="videoLightboxClose" type="button" aria-label="关闭">✕</button>
   </div>
@@ -2538,7 +2541,7 @@
       historyList: $("historyList"), refreshImportsBtn: $("refreshImportsBtn"), channelSearch: $("channelSearch"), channelCount: $("channelCount"), matrixGallery: $("matrixGallery"),
       lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxBackdrop: $("lightboxBackdrop"), lightboxClose: $("lightboxClose"),
       videoLightbox: $("videoLightbox"), videoLightboxBackdrop: $("videoLightboxBackdrop"), videoLightboxVideo: $("videoLightboxVideo"), videoLightboxClose: $("videoLightboxClose"),
-      videoLightboxError: $("videoLightboxError"), videoLightboxErrorDl: $("videoLightboxErrorDl"),
+      videoLightboxError: $("videoLightboxError"), videoLightboxErrorDl: $("videoLightboxErrorDl"), videoLightboxRetry: $("videoLightboxRetry"),
       channelModal: $("channelModal"), channelModalBackdrop: $("channelModalBackdrop"), channelUrlInput: $("channelUrlInput"),
       channelCurrent: $("channelCurrent"), channelApplyBtn: $("channelApplyBtn"), channelClearBtn: $("channelClearBtn"), channelCancelBtn: $("channelCancelBtn"),
       telegramModal: $("telegramModal"), telegramModalBackdrop: $("telegramModalBackdrop"), telegramCancelBtn: $("telegramCancelBtn"), telegramApiId: $("telegramApiId"), telegramApiHash: $("telegramApiHash"), telegramPhone: $("telegramPhone"), telegramTarget: $("telegramTarget"), telegramInterval: $("telegramInterval"), telegramParallel: $("telegramParallel"), telegramMedia: $("telegramMedia"), telegramCode: $("telegramCode"), telegramPassword: $("telegramPassword"), telegramStatus: $("telegramStatus"), telegramSaveBtn: $("telegramSaveBtn"), telegramSendCodeBtn: $("telegramSendCodeBtn"), telegramVerifyCodeBtn: $("telegramVerifyCodeBtn"), telegramVerifyPasswordBtn: $("telegramVerifyPasswordBtn"), telegramSyncNowBtn: $("telegramSyncNowBtn"), telegramBotToken: $("telegramBotToken"), telegramBotStatus: $("telegramBotStatus"),
@@ -2729,7 +2732,7 @@
       const url = `/api/file?path=${encodeURIComponent(path)}`;
       videoExpectedSrc = url;
       videoErrorRetried = false;
-      if (els.videoLightboxError) els.videoLightboxError.hidden = true;
+      hideVideoError();
       if (els.videoLightboxErrorDl) els.videoLightboxErrorDl.href = url;
       els.videoLightboxVideo.src = url;
       showModal(els.videoLightbox);
@@ -2741,7 +2744,7 @@
       try { els.videoLightboxVideo.pause(); } catch (_) {}
       els.videoLightboxVideo.removeAttribute("src");
       els.videoLightboxVideo.load();
-      if (els.videoLightboxError) els.videoLightboxError.hidden = true;
+      hideVideoError();
     }
     function openImageFile(path) {
       openLightbox(`/api/file?path=${encodeURIComponent(path)}`);
@@ -4556,36 +4559,45 @@
     els.lightboxClose?.addEventListener("click", closeLightbox);
     let videoExpectedSrc = "";
     let videoErrorRetried = false;
+    function showVideoError(code) {
+      const map = { 2: "网络加载失败", 3: "解码失败", 4: "编码不支持" };
+      const el = document.getElementById("videoLightboxErrorText");
+      if (el) {
+        el.textContent = "该视频无法在此设备上播放（" + (map[code] || ("错误码 " + code)) + "）。";
+      }
+      if (els.videoLightboxErrorDl) {
+        els.videoLightboxErrorDl.href = videoExpectedSrc || els.videoLightboxVideo.currentSrc || "";
+      }
+      if (els.videoLightboxError) els.videoLightboxError.hidden = false;
+    }
+    function hideVideoError() {
+      if (els.videoLightboxError) els.videoLightboxError.hidden = true;
+    }
     els.videoLightboxVideo?.addEventListener("error", () => {
       // Ignore errors from a closed/cleared source (they fire asynchronously).
       if (els.videoLightbox.hidden || !videoExpectedSrc) return;
       const code = (els.videoLightboxVideo.error || {}).code || 0;
       if (code !== 2 && code !== 3 && code !== 4) return;
       if (!videoErrorRetried) {
-        // Transient network errors happen; retry the load once before warning.
+        // Transient errors: reload the current source once. Do NOT clear src,
+        // because clearing triggers spurious error events that reopen the warning.
         videoErrorRetried = true;
-        const url = videoExpectedSrc;
-        els.videoLightboxVideo.removeAttribute("src");
         try { els.videoLightboxVideo.load(); } catch (_) {}
-        els.videoLightboxVideo.src = url;
         els.videoLightboxVideo.play().catch(() => {});
         return;
       }
-      videoErrorRetried = false;
-      if (els.videoLightboxErrorDl) els.videoLightboxErrorDl.href = videoExpectedSrc || "";
-      const el = document.getElementById("videoLightboxErrorText");
-      if (el) {
-        const map = { 2: "网络加载失败", 3: "解码失败", 4: "编码不支持" };
-        el.textContent = "该视频无法在此设备上播放（" + (map[code] || ("错误码 " + code)) + "）。";
-      }
-      if (els.videoLightboxError) els.videoLightboxError.hidden = false;
+      showVideoError(code);
     });
     // Hide the fallback once playback actually starts (buffering is normal).
-    els.videoLightboxVideo?.addEventListener("playing", () => {
-      if (els.videoLightboxError) els.videoLightboxError.hidden = true;
-    });
-    els.videoLightboxVideo?.addEventListener("canplay", () => {
-      if (els.videoLightboxError) els.videoLightboxError.hidden = true;
+    els.videoLightboxVideo?.addEventListener("playing", hideVideoError);
+    els.videoLightboxVideo?.addEventListener("canplay", hideVideoError);
+    els.videoLightboxVideo?.addEventListener("loadedmetadata", hideVideoError);
+    els.videoLightboxRetry?.addEventListener("click", () => {
+      if (!videoExpectedSrc) return;
+      hideVideoError();
+      videoErrorRetried = false;
+      try { els.videoLightboxVideo.load(); } catch (_) {}
+      els.videoLightboxVideo.play().catch(() => {});
     });
     els.viewerToggle.addEventListener("click", () => els.viewerControls.classList.toggle("open"));
     els.themeBtn.addEventListener("click", toggleTheme);
