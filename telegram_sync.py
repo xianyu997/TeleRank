@@ -374,6 +374,38 @@ class TelegramSyncService:
             self._owner_id_cache = None
         return self._owner_id_cache
 
+    def download_message_media(self, link, dest_dir):
+        """Download the media (video/photo) of a specific t.me message link.
+
+        Accepts links like https://t.me/channel/123 or https://t.me/c/123456/123.
+        Returns the saved file path.
+        """
+        match = re.search(r"(?:t\.me|telegram\.me)/(?:s/)?([A-Za-z0-9_]+)/(\d+)(?:[/?#]|$)", str(link or ""))
+        if not match:
+            raise ValueError("需要带消息编号的链接，例如 https://t.me/channel/123")
+        target, msg_id = match.group(1), int(match.group(2))
+        client = self._client()
+
+        async def _run():
+            try:
+                await client.connect()
+                if target.isdigit():
+                    entity = await client.get_entity(int("-100" + target))
+                else:
+                    entity = await client.get_entity(target)
+                message = await client.get_messages(entity, ids=msg_id)
+                if not message or not getattr(message, "media", None):
+                    raise ValueError("该消息没有可下载的媒体")
+                Path(dest_dir).mkdir(parents=True, exist_ok=True)
+                path = await client.download_media(message, file=str(dest_dir))
+                if not path:
+                    raise ValueError("媒体下载失败")
+                return str(path)
+            finally:
+                await client.disconnect()
+
+        return asyncio.run(_run())
+
     def _write_channel_payload(self, data_file, title, records):
         """Write the full channel result.json (sorted by message id)."""
         payload = {"name": title, "type": "channel", "messages": [records[k] for k in sorted(records)]}

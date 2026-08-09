@@ -94,8 +94,9 @@ class BotMessageTests(unittest.TestCase):
         def _api(self, method, data=None):
             return {"ok": True, "result": {"message_id": 1}}
 
-        def _send_message(self, chat_id, text):
+        def _send_message(self, chat_id, text, reply_markup=None):
             self.messages.append(text)
+            self.last_markup = reply_markup
 
         def _edit_message(self, chat_id, message_id, text):
             self.edited.append(text)
@@ -160,8 +161,9 @@ class BotCommandTests(unittest.TestCase):
             super().__init__("123456:" + "A" * 35, sync)
             self.messages = []
 
-        def _send_message(self, chat_id, text):
+        def _send_message(self, chat_id, text, reply_markup=None):
             self.messages.append(text)
+            self.last_markup = reply_markup
 
         def _api(self, method, data=None):
             return {"ok": True, "result": {"message_id": 1}}
@@ -182,6 +184,39 @@ class BotCommandTests(unittest.TestCase):
         bot = self._CmdBot(self._CmdSync())
         bot._handle_commands(1, "/foo")
         self.assertTrue(any("未知命令" in m for m in bot.messages))
+
+    def test_extract_message_links(self):
+        links = TelegramBotListener._extract_message_links("https://t.me/channel/123 和 https://t.me/c/998877/66")
+        self.assertIn(("channel", 123), links)
+        self.assertIn(("998877", 66), links)
+        self.assertEqual(TelegramBotListener._extract_message_links("https://t.me/plainchannel"), [])
+
+    def test_begin_media_save_sends_keyboard(self):
+        bot = self._CmdBot(self._CmdSync())
+        bot._begin_media_save(1, link="https://t.me/channel/123")
+        self.assertTrue(any("保存" in m for m in bot.messages))
+        with bot._pending_lock:
+            self.assertIn(1, bot._pending_save)
+
+    def test_callback_new_sets_awaiting_name(self):
+        bot = self._CmdBot(self._CmdSync())
+        bot._owner_id = 999
+        bot._handle_callback({
+            "id": "c1", "data": "save:new",
+            "from": {"id": 999},
+            "message": {"chat": {"id": 1}, "message_id": 5},
+        })
+        with bot._pending_lock:
+            self.assertTrue(bot._pending_save.get(1, {}).get("awaiting_name"))
+
+    def test_save_worker_reports_path(self):
+        class SaveSync(self._CmdSync):
+            def download_message_media(self, link, dest_dir):
+                return "C:\\tmp\\saved.mp4"
+
+        bot = self._CmdBot(SaveSync())
+        bot._save_worker(1, {"link": "https://t.me/channel/123"}, "C:\\tmp")
+        self.assertTrue(any("已保存" in m for m in bot.messages))
 
 
 class SyncPayloadTests(unittest.TestCase):

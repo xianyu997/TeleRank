@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.08.09-video-save — 视频保存到指定文件夹
+
+- Bot 收到「转发的视频」或「带消息编号的链接」时，询问保存位置：新建文件夹或选择已有文件夹（内联按钮）
+- 支持 `https://t.me/频道/消息ID` 与 `https://t.me/c/频道ID/消息ID` 单条消息媒体下载
+- 下载根目录默认 `D:\TelegramReactionRanker\Downloads`（`TELERANK_DOWNLOAD_ROOT` / preferences `download_root` 可改）
+- 普通频道链接仍走原图片导入流程
+
 ## v2026.08.09-remote-control — Telegram 手机远程控制
 
 - Bot 新增远程控制命令：`/help` `/status` `/channels` `/download <链接>` `/stop`

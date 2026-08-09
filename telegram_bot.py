@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import shutil
 import threading
 import time
 import urllib.request
@@ -80,6 +81,8 @@ class TelegramBotListener:
         self._importing = set()
         self._importing_lock = threading.Lock()
         self._owner_id = None
+        self._pending_save = {}
+        self._pending_lock = threading.Lock()
 
     # ── Bot API helpers ──────────────────────────────────────────
 
@@ -93,9 +96,12 @@ class TelegramBotListener:
         with _API_OPENER.open(req, timeout=30) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
-    def _send_message(self, chat_id, text):
+    def _send_message(self, chat_id, text, reply_markup=None):
+        payload = {"chat_id": chat_id, "text": text[:4000]}
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
         try:
-            self._api("sendMessage", {"chat_id": chat_id, "text": text[:4000]})
+            self._api("sendMessage", payload)
         except Exception:
             pass
 
@@ -213,6 +219,144 @@ class TelegramBotListener:
         else:
             self._send_message(chat_id, text)
 
+    # ── Media save flow (video share -> choose folder -> download) ──
+
+    @staticmethod
+    def _extract_message_links(text):
+        """Extract (target, message_id) pairs from t.me/xxx/123 links."""
+        found = []
+        for match in re.finditer(
+            r"(?:https?://)?(?:www\.)?(?:t\.me|telegram\.me)/(?:s/)?(?:c/(\d+)/(\d+)|([A-Za-z0-9_]+)/(\d+))(?![0-9])",
+            text or "",
+            re.IGNORECASE,
+        ):
+            if match.group(1):
+                found.append((match.group(1), int(match.group(2))))
+            else:
+                found.append((match.group(3), int(match.group(4))))
+        return list(dict.fromkeys(found))
+
+    def _download_root(self):
+        env = os.environ.get("TELERANK_DOWNLOAD_ROOT", "").strip()
+        if env:
+            return Path(env)
+        try:
+            prefs = self._sync._read_json(self._sync.base_dir / "preferences.json", {})
+            if prefs.get("download_root"):
+                return Path(prefs["download_root"])
+        except Exception:  # noqa: BLE001
+            pass
+        return Path(r"D:\TelegramReactionRanker\Downloads")
+
+    def _folder_keyboard(self):
+        root = self._download_root()
+        folders = sorted([p for p in root.iterdir() if p.is_dir()]) if root.exists() else []
+        rows = []
+        for i, folder in enumerate(folders[:20]):
+            rows.append([{"text": "📂 " + folder.name[:38], "callback_data": f"save:existing:{i}"}])
+        rows.append([
+            {"text": "📁 新建文件夹", "callback_data": "save:new"},
+            {"text": "❌ 取消", "callback_data": "save:cancel"},
+        ])
+        return {"inline_keyboard": rows}
+
+    def _begin_media_save(self, chat_id, **media):
+        with self._pending_lock:
+            self._pending_save[chat_id] = media
+        self._send_message(
+            chat_id,
+            "📥 收到视频，保存到哪里？",
+            reply_markup=self._folder_keyboard(),
+        )
+
+    def _start_save_to_folder(self, chat_id, pending, folder):
+        with self._pending_lock:
+            self._pending_save.pop(chat_id, None)
+        threading.Thread(target=self._save_worker, args=(chat_id, pending, folder), daemon=True).start()
+
+    def _save_worker(self, chat_id, pending, folder):
+        try:
+            if pending.get("link"):
+                path = self._sync.download_message_media(pending["link"], folder)
+            elif pending.get("file_id"):
+                path = self._download_bot_file(pending["file_id"], folder)
+            else:
+                raise RuntimeError("缺少下载信息")
+            self._send_message(chat_id, f"✅ 已保存：{path}")
+        except Exception as exc:  # noqa: BLE001
+            self._send_message(chat_id, f"❌ 下载失败：{exc}")
+
+    def _download_bot_file(self, file_id, dest_dir):
+        info = self._api("getFile", {"file_id": file_id})
+        if not info.get("ok"):
+            raise RuntimeError(info.get("description", "getFile 失败"))
+        file_path = info["result"]["file_path"]
+        url = f"https://api.telegram.org/file/bot{self._token}/{file_path}"
+        dest_dir = Path(dest_dir)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / Path(file_path).name
+        with _API_OPENER.open(url, timeout=600) as resp, open(dest, "wb") as handle:
+            shutil.copyfileobj(resp, handle)
+        return str(dest)
+
+    def _handle_callback(self, callback):
+        data = callback.get("data") or ""
+        message = callback.get("message") or {}
+        chat_id = (message.get("chat") or {}).get("id")
+        message_id = message.get("message_id")
+        sender = callback.get("from") or {}
+        if self._owner_id is None:
+            try:
+                self._owner_id = self._sync.owner_id()
+            except Exception:  # noqa: BLE001
+                self._owner_id = None
+        if not (self._owner_id and sender.get("id") == self._owner_id):
+            return
+        try:
+            self._api("answerCallbackQuery", {"callback_query_id": callback.get("id", "")})
+        except Exception:  # noqa: BLE001
+            pass
+        if not chat_id:
+            return
+        if data == "save:new":
+            with self._pending_lock:
+                self._pending_save.setdefault(chat_id, {})["awaiting_name"] = True
+            try:
+                self._api("editMessageText", {
+                    "chat_id": chat_id,
+                    "message_id": message_id,
+                    "text": "请输入新文件夹名称（不要包含 \\ / : * ? \" < > |）：",
+                })
+            except Exception:  # noqa: BLE001
+                pass
+        elif data == "save:cancel":
+            with self._pending_lock:
+                self._pending_save.pop(chat_id, None)
+            try:
+                self._api("editMessageText", {"chat_id": chat_id, "message_id": message_id, "text": "已取消。"})
+            except Exception:  # noqa: BLE001
+                pass
+        elif data.startswith("save:existing:"):
+            try:
+                idx = int(data.rsplit(":", 1)[1])
+            except ValueError:
+                return
+            root = self._download_root()
+            folders = sorted([p for p in root.iterdir() if p.is_dir()]) if root.exists() else []
+            if idx < 0 or idx >= len(folders):
+                return
+            with self._pending_lock:
+                pending = self._pending_save.get(chat_id, {})
+            try:
+                self._api("editMessageText", {
+                    "chat_id": chat_id,
+                    "message_id": message_id,
+                    "text": f"⏳ 正在下载到 {folders[idx].name} …",
+                })
+            except Exception:  # noqa: BLE001
+                pass
+            self._start_save_to_folder(chat_id, pending, folders[idx])
+
     # ── Polling loop ─────────────────────────────────────────────
 
     def _poll(self):
@@ -223,7 +367,7 @@ class TelegramBotListener:
                 result = self._api("getUpdates", {
                     "offset": self._offset + 1,
                     "timeout": 10,
-                    "allowed_updates": ["message"],
+                    "allowed_updates": ["message", "callback_query"],
                 })
                 if not result.get("ok"):
                     self._last_error = result.get("description", "Unknown API error")
@@ -231,6 +375,9 @@ class TelegramBotListener:
                     continue
                 for update in result.get("result", []):
                     self._offset = max(self._offset, update["update_id"])
+                    if "callback_query" in update:
+                        self._handle_callback(update["callback_query"])
+                        continue
                     msg = update.get("message") or update.get("channel_post")
                     if not msg:
                         continue
@@ -238,8 +385,40 @@ class TelegramBotListener:
                         continue
                     chat_id = msg["chat"]["id"]
                     text = msg.get("text") or msg.get("caption") or ""
+                    # Pending new-folder name input
+                    with self._pending_lock:
+                        pending = self._pending_save.get(chat_id)
+                    if pending and pending.get("awaiting_name"):
+                        name = text.strip()
+                        if not name or any(ch in name for ch in '\\/:*?"<>|'):
+                            self._send_message(chat_id, "文件夹名称无效（不能包含 \\ / : * ? \" < > |），请重新输入：")
+                            continue
+                        with self._pending_lock:
+                            pending.pop("awaiting_name", None)
+                        root = self._download_root() / name
+                        try:
+                            root.mkdir(parents=True, exist_ok=True)
+                        except Exception as exc:  # noqa: BLE001
+                            self._send_message(chat_id, f"创建文件夹失败：{exc}")
+                            continue
+                        self._start_save_to_folder(chat_id, pending, root)
+                        continue
                     if text.strip().startswith("/"):
                         self._handle_commands(chat_id, text)
+                        continue
+                    message_links = self._extract_message_links(text)
+                    if message_links:
+                        target, mid = message_links[0]
+                        link = f"https://t.me/{target}/{mid}"
+                        self._begin_media_save(chat_id, link=link)
+                        continue
+                    video = msg.get("video") or msg.get("document")
+                    if video and (msg.get("video") or (video.get("mime_type") or "").startswith("video/")):
+                        file_name = (
+                            video.get("file_name")
+                            or (video.get("file_unique_id", "video") + ".mp4")
+                        )
+                        self._begin_media_save(chat_id, file_id=video["file_id"], file_name=file_name)
                         continue
                     links = self._extract_links(text)
                     if not links:
