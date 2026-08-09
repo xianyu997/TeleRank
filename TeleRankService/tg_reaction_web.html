@@ -2079,7 +2079,7 @@
     <div class="lightbox-backdrop" id="videoLightboxBackdrop"></div>
     <video class="lightbox-video" id="videoLightboxVideo" controls playsinline preload="metadata"></video>
     <div class="lightbox-error" id="videoLightboxError" hidden>
-      <p>该视频无法在此设备上播放（可能是编码不支持，如 AV1/HEVC）。</p>
+      <p id="videoLightboxErrorText">该视频无法在此设备上播放。</p>
       <a class="btn" id="videoLightboxErrorDl" href="#" download>⬇ 下载后观看</a>
     </div>
     <button class="lightbox-close" id="videoLightboxClose" type="button" aria-label="关闭">✕</button>
@@ -2727,6 +2727,8 @@
     function openVideoFile(path) {
       if (!path || !els.videoLightboxVideo) return;
       const url = `/api/file?path=${encodeURIComponent(path)}`;
+      videoExpectedSrc = url;
+      videoErrorRetried = false;
       if (els.videoLightboxError) els.videoLightboxError.hidden = true;
       if (els.videoLightboxErrorDl) els.videoLightboxErrorDl.href = url;
       els.videoLightboxVideo.src = url;
@@ -2735,6 +2737,7 @@
     }
     function closeVideoFile() {
       hideModal(els.videoLightbox);
+      videoExpectedSrc = "";
       try { els.videoLightboxVideo.pause(); } catch (_) {}
       els.videoLightboxVideo.removeAttribute("src");
       els.videoLightboxVideo.load();
@@ -4551,12 +4554,31 @@
     els.videoLightboxBackdrop?.addEventListener("click", closeVideoFile);
     els.videoLightboxClose?.addEventListener("click", closeVideoFile);
     els.lightboxClose?.addEventListener("click", closeLightbox);
+    let videoExpectedSrc = "";
+    let videoErrorRetried = false;
     els.videoLightboxVideo?.addEventListener("error", () => {
+      // Ignore errors from a closed/cleared source (they fire asynchronously).
+      if (els.videoLightbox.hidden || !videoExpectedSrc) return;
       const code = (els.videoLightboxVideo.error || {}).code || 0;
-      // 3 = MEDIA_ERR_DECODE, 4 = MEDIA_ERR_SRC_NOT_SUPPORTED (unsupported codec)
-      if (els.videoLightboxError && (code === 3 || code === 4)) {
-        els.videoLightboxError.hidden = false;
+      if (code !== 2 && code !== 3 && code !== 4) return;
+      if (!videoErrorRetried) {
+        // Transient network errors happen; retry the load once before warning.
+        videoErrorRetried = true;
+        const url = videoExpectedSrc;
+        els.videoLightboxVideo.removeAttribute("src");
+        try { els.videoLightboxVideo.load(); } catch (_) {}
+        els.videoLightboxVideo.src = url;
+        els.videoLightboxVideo.play().catch(() => {});
+        return;
       }
+      videoErrorRetried = false;
+      if (els.videoLightboxErrorDl) els.videoLightboxErrorDl.href = videoExpectedSrc || "";
+      const el = document.getElementById("videoLightboxErrorText");
+      if (el) {
+        const map = { 2: "网络加载失败", 3: "解码失败", 4: "编码不支持" };
+        el.textContent = "该视频无法在此设备上播放（" + (map[code] || ("错误码 " + code)) + "）。";
+      }
+      if (els.videoLightboxError) els.videoLightboxError.hidden = false;
     });
     // Hide the fallback once playback actually starts (buffering is normal).
     els.videoLightboxVideo?.addEventListener("playing", () => {
