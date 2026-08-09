@@ -190,6 +190,7 @@ def pick_folder_windows():
 
 class Handler(http.server.BaseHTTPRequestHandler):
     server_version = "TGReactionRanker/1.0"
+    protocol_version = "HTTP/1.1"
 
     def is_local_client(self):
         """Only the computer running the app may open native or destructive actions."""
@@ -507,6 +508,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         self.send_file(Path(target))
 
+    def do_HEAD(self):
+        # Players use HEAD to fetch media metadata (size/type) cheaply.
+        parsed = urllib.parse.urlparse(self.path)
+        path = urllib.parse.unquote(parsed.path)
+        if path == "/api/file":
+            self.handle_file_download(head_only=True)
+            return
+        self.send_error(404, "Not found")
+
     def handle_files_browser(self):
         """LAN file browser: list the archive root or a subfolder."""
         parsed = urllib.parse.urlparse(self.path)
@@ -533,7 +543,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         parent = str(target.parent) if target.resolve() != FILE_ROOT.resolve() else None
         self.send_json({"ok": True, "root": str(target), "parent": parent, "entries": entries})
 
-    def handle_file_download(self):
+    def handle_file_download(self, head_only=False):
         """Serve any file under the archive root, with HTTP Range support for video."""
         parsed = urllib.parse.urlparse(self.path)
         params = urllib.parse.parse_qs(parsed.query)
@@ -546,6 +556,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
         if content_type.startswith("text/"):
             content_type += "; charset=utf-8"
+        media_types = ("video/", "image/", "audio/")
+        is_media = content_type.startswith(media_types)
         start, end = 0, size - 1
         status = 200
         range_header = self.headers.get("Range")
@@ -568,13 +580,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Accept-Ranges", "bytes")
         if status == 206:
             self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        if is_media:
+            self.send_header("Content-Disposition", "inline")
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
+        if head_only:
+            return
         with open(target, "rb") as handle:
             handle.seek(start)
             remaining = length
             while remaining > 0:
-                chunk = handle.read(min(256 * 1024, remaining))
+                chunk = handle.read(min(1024 * 1024, remaining))
                 if not chunk:
                     break
                 self.wfile.write(chunk)
