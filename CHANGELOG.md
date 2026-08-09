@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.08.09-service-install — Windows 系统服务化
+
+- 安装为系统服务（`TeleRankService`，开机自启、后台静默），不再需要手动双击启动
+- 新增服务 `Proxy` 参数：LocalSystem 下显式走 Clash 代理（默认 `http://127.0.0.1:7897`）
+- 安装脚本支持 `-Proxy` 参数并写入注册表
+
 ## v2026.08.09-save-existing — 保存到现有文件夹
 
 - 「已有文件夹」列表默认包含下载根目录、博主文件夹（old博主）、导入目录，带分页

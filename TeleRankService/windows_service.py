@@ -79,7 +79,7 @@ def read_service_parameters():
     params = {}
     try:
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, PARAM_KEY) as key:
-            for name in ("Port", "DataDir", "ArchiveRoot", "TrashRoot", "FileRoot"):
+            for name in ("Port", "DataDir", "ArchiveRoot", "TrashRoot", "FileRoot", "Proxy"):
                 try:
                     params[name] = winreg.QueryValueEx(key, name)[0]
                 except OSError:
@@ -204,6 +204,7 @@ def resolve_runtime_settings(explicit=None):
     archive_root = explicit.get("archive_root") or params.get("ArchiveRoot") or ""
     trash_root = explicit.get("trash_root") or params.get("TrashRoot") or ""
     file_root = explicit.get("file_root") or params.get("FileRoot") or ""
+    proxy = explicit.get("proxy") or params.get("Proxy") or ""
     try:
         port = int(explicit.get("port") or params.get("Port") or DEFAULT_PORT)
     except (TypeError, ValueError):
@@ -216,6 +217,12 @@ def resolve_runtime_settings(explicit=None):
         os.environ["TELERANK_TRASH_ROOT"] = str(trash_root)
     if file_root:
         os.environ["TELERANK_FILE_ROOT"] = str(file_root)
+    if proxy:
+        # LocalSystem has no user-level WinINET proxy, so pass it explicitly
+        # for the bot API (urllib) and Telethon MTProto.
+        os.environ["HTTPS_PROXY"] = proxy
+        os.environ["HTTP_PROXY"] = proxy
+        os.environ["TELERANK_MT_PROXY"] = proxy
     return data_dir, port, archive_root
 
 
