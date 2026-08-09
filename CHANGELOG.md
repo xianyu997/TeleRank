@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.08.09-video-fallback-fix — 播放提示误报修复
+
+- 修复正常播放时误弹「编码不支持」提示：仅在真实解码/编码错误（MEDIA_ERR_DECODE / SRC_NOT_SUPPORTED）时显示，播放开始后自动隐藏
+
 ## v2026.08.09-video-fallback — 播放失败兜底
 
 - 播放器遇到设备不支持的编码（如 AV1/HEVC）时显示明确提示 + 下载按钮，不再黑屏无反馈
