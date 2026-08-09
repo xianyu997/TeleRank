@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.08.09-file-browser — 手机文件浏览
+
+- 新增「文件」页：手机/局域网可浏览、播放、下载博主文件夹内容
+- `/api/files` 目录浏览、`/api/file` 视频 Range 流式播放、`/api/zip` 打包下载（超 4GB 拒绝）
+- 文件根目录可配置：`TELERANK_FILE_ROOT` 环境变量 / preferences `file_root` / 服务 `FileRoot` 参数
+
 ## v2026.08.04-matrix-fix — 矩阵视图渲染修复
 
 - 修复 `filteredRows()` 引用未定义 `isMatrix` 导致的页面加载报错（含纯文字消息的频道无法打开）

@@ -79,7 +79,7 @@ def read_service_parameters():
     params = {}
     try:
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, PARAM_KEY) as key:
-            for name in ("Port", "DataDir", "ArchiveRoot", "TrashRoot"):
+            for name in ("Port", "DataDir", "ArchiveRoot", "TrashRoot", "FileRoot"):
                 try:
                     params[name] = winreg.QueryValueEx(key, name)[0]
                 except OSError:
@@ -203,6 +203,7 @@ def resolve_runtime_settings(explicit=None):
     data_dir = str(Path(data_dir).expanduser())
     archive_root = explicit.get("archive_root") or params.get("ArchiveRoot") or ""
     trash_root = explicit.get("trash_root") or params.get("TrashRoot") or ""
+    file_root = explicit.get("file_root") or params.get("FileRoot") or ""
     try:
         port = int(explicit.get("port") or params.get("Port") or DEFAULT_PORT)
     except (TypeError, ValueError):
@@ -213,6 +214,8 @@ def resolve_runtime_settings(explicit=None):
         os.environ["TELERANK_ARCHIVE_ROOT"] = str(archive_root)
     if trash_root:
         os.environ["TELERANK_TRASH_ROOT"] = str(trash_root)
+    if file_root:
+        os.environ["TELERANK_FILE_ROOT"] = str(file_root)
     return data_dir, port, archive_root
 
 

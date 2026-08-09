@@ -909,6 +909,16 @@
     }
     .matrix-gallery::-webkit-scrollbar { width: 0; height: 0; }
     .matrix-gallery { overscroll-behavior: contain; }
+    .files-layout { padding: 12px; overflow: auto; height: 100%; }
+    .files-panel { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+    .files-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .files-list { display: flex; flex-direction: column; gap: 4px; }
+    .files-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); text-align: left; width: 100%; }
+    .files-row:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+    .files-icon { font-size: 16px; }
+    .files-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); text-decoration: none; }
+    .files-size { color: var(--muted); font-size: 12px; }
+    .files-dl { font-size: 12px; }
     .matrix-grid {
       column-width: clamp(150px, 18vw, 280px);
       column-gap: clamp(8px, 1.1vmin, 14px);
@@ -1879,6 +1889,7 @@
         <button class="btn" id="importPageBtn" type="button" data-i18n="nav.import">导入</button>
         <button class="btn secondary" id="viewerPageBtn" type="button" data-i18n="nav.viewer">观看</button>
         <button class="btn secondary" id="matrixPageBtn" type="button" data-i18n="nav.matrix">矩阵</button>
+        <button class="btn secondary" id="filesPageBtn" type="button">文件</button>
         <div class="settings-wrap" id="settingsWrap">
           <button class="btn secondary settings-btn" id="settingsBtn" type="button" aria-label="设置" aria-haspopup="true" aria-expanded="false">⚙</button>
           <div class="settings-popover" role="menu">
@@ -1903,6 +1914,7 @@
     <button class="btn secondary" id="mobileImportPageBtn" type="button"><span class="nav-icon">📥</span><span class="nav-label">导入</span></button>
     <button class="btn secondary" id="mobileViewerPageBtn" type="button"><span class="nav-icon">👁️</span><span class="nav-label">观看</span></button>
     <button class="btn secondary" id="mobileMatrixPageBtn" type="button"><span class="nav-icon">🔲</span><span class="nav-label">矩阵</span></button>
+    <button class="btn secondary" id="mobileFilesPageBtn" type="button"><span class="nav-icon">📁</span><span class="nav-label">文件</span></button>
     <button class="btn secondary" id="mobileChannelBtn" type="button" disabled><span class="nav-icon">🔗</span><span class="nav-label">频道</span></button>
   </nav>
 
@@ -1996,6 +2008,19 @@
     </section>
   </main>
 
+  <main class="page files-layout" id="filesPage" hidden>
+    <section class="panel files-panel" style="padding:12px;">
+      <div class="files-head">
+        <h2 class="section-title" id="filesBreadcrumb">已导入频道</h2>
+        <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;">
+          <button class="btn secondary" id="filesBackBtn" type="button" hidden>↑ 上级</button>
+          <button class="btn secondary" id="filesZipBtn" type="button" hidden>📦 打包下载</button>
+        </div>
+      </div>
+      <div class="files-list" id="filesList"></div>
+    </section>
+  </main>
+
   <div class="lightbox" id="lightbox" hidden>
     <div class="lightbox-backdrop" id="lightboxBackdrop"></div>
     <img class="lightbox-img" id="lightboxImg" alt="">
@@ -2071,6 +2096,8 @@
         "nav.import": "导入",
         "nav.viewer": "观看",
         "nav.matrix": "矩阵",
+        "nav.files": "文件",
+        "files.empty": "文件夹为空",
         "nav.channel": "频道链接",
         "nav.themeDark": "主题：黑色",
         "nav.themeWhite": "主题：白色",
@@ -2186,6 +2213,8 @@
         "nav.import": "匯入",
         "nav.viewer": "觀看",
         "nav.matrix": "矩陣",
+        "nav.files": "檔案",
+        "files.empty": "資料夾為空",
         "nav.channel": "頻道連結",
         "nav.themeDark": "主題：黑色",
         "nav.themeWhite": "主題：白色",
@@ -2301,6 +2330,8 @@
         "nav.import": "Import",
         "nav.viewer": "Viewer",
         "nav.matrix": "Matrix",
+        "nav.files": "Files",
+        "files.empty": "Empty folder",
         "nav.channel": "Channel Link",
         "nav.themeDark": "Theme: Black",
         "nav.themeWhite": "Theme: White",
@@ -2440,9 +2471,10 @@
       sourceLabel: $("sourceLabel"), status: $("status"), exportBtn: $("exportBtn"),
       closeBtn: $("closeBtn"), themeBtn: $("themeBtn"), languageSelect: $("languageSelect"), manualChannelBtn: $("manualChannelBtn"), telegramSyncBtn: $("telegramSyncBtn"), emojiList: $("emojiList"),
       settingsWrap: $("settingsWrap"), settingsBtn: $("settingsBtn"), serverBanner: $("serverBanner"),
-      importPageBtn: $("importPageBtn"), viewerPageBtn: $("viewerPageBtn"), matrixPageBtn: $("matrixPageBtn"),
-      mobileImportPageBtn: $("mobileImportPageBtn"), mobileViewerPageBtn: $("mobileViewerPageBtn"), mobileMatrixPageBtn: $("mobileMatrixPageBtn"), mobileChannelBtn: $("mobileChannelBtn"),
-      importPage: $("importPage"), viewerPage: $("viewerPage"), matrixPage: $("matrixPage"),
+      importPageBtn: $("importPageBtn"), viewerPageBtn: $("viewerPageBtn"), matrixPageBtn: $("matrixPageBtn"), filesPageBtn: $("filesPageBtn"),
+      mobileImportPageBtn: $("mobileImportPageBtn"), mobileViewerPageBtn: $("mobileViewerPageBtn"), mobileMatrixPageBtn: $("mobileMatrixPageBtn"), mobileFilesPageBtn: $("mobileFilesPageBtn"), mobileChannelBtn: $("mobileChannelBtn"),
+      importPage: $("importPage"), viewerPage: $("viewerPage"), matrixPage: $("matrixPage"), filesPage: $("filesPage"),
+      filesBreadcrumb: $("filesBreadcrumb"), filesList: $("filesList"), filesBackBtn: $("filesBackBtn"), filesZipBtn: $("filesZipBtn"),
       viewerToggle: $("viewerToggle"), viewerControls: $("viewerControls"),
       historyList: $("historyList"), refreshImportsBtn: $("refreshImportsBtn"), channelSearch: $("channelSearch"), channelCount: $("channelCount"), matrixGallery: $("matrixGallery"),
       lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxBackdrop: $("lightboxBackdrop"),
@@ -2547,20 +2579,24 @@
       const isImport = page === "import";
       const isViewer = page === "viewer";
       const isMatrix = page === "matrix";
-      const pages = [els.importPage, els.viewerPage, els.matrixPage];
-      const activePage = isImport ? els.importPage : (isViewer ? els.viewerPage : els.matrixPage);
+      const isFiles = page === "files";
+      const pages = [els.importPage, els.viewerPage, els.matrixPage, els.filesPage];
+      const activePage = isImport ? els.importPage : (isViewer ? els.viewerPage : (isFiles ? els.filesPage : els.matrixPage));
       if (!activePage.hidden) return;
       const outgoing = pages.find((node) => !node.hidden);
       const finish = () => {
         els.importPage.hidden = !isImport;
         els.viewerPage.hidden = !isViewer;
         els.matrixPage.hidden = !isMatrix;
+        els.filesPage.hidden = !isFiles;
         els.importPageBtn.classList.toggle("secondary", !isImport);
         els.viewerPageBtn.classList.toggle("secondary", !isViewer);
         els.matrixPageBtn.classList.toggle("secondary", !isMatrix);
+        els.filesPageBtn?.classList.toggle("secondary", !isFiles);
         els.mobileImportPageBtn?.classList.toggle("active", isImport);
         els.mobileViewerPageBtn?.classList.toggle("active", isViewer);
         els.mobileMatrixPageBtn?.classList.toggle("active", isMatrix);
+        els.mobileFilesPageBtn?.classList.toggle("active", isFiles);
         els.mobileChannelBtn?.classList.toggle("active", false);
         pages.forEach((node) => node.classList.remove("page-enter"));
         if (activePage) {
@@ -2570,6 +2606,7 @@
         requestAnimationFrame(() => {
           if (isViewer) renderGallery(false);
           if (isMatrix) renderMatrix(false);
+          if (isFiles) renderFiles();
           applyImageFits();
         });
       };
@@ -2582,6 +2619,42 @@
         }, 150);
       } else {
         finish();
+      }
+    }
+    let filesCurrentPath = "";
+    let filesParentPath = null;
+    function fmtBytes(n) {
+      if (!n) return "";
+      const units = ["B", "KB", "MB", "GB", "TB"];
+      let value = Number(n) || 0;
+      let i = 0;
+      while (value >= 1024 && i < units.length - 1) { value /= 1024; i++; }
+      return (value >= 10 || i === 0 ? value.toFixed(0) : value.toFixed(1)) + " " + units[i];
+    }
+    async function renderFiles(path) {
+      filesCurrentPath = typeof path === "string" ? path : filesCurrentPath;
+      try {
+        const res = await fetch(`/api/files?path=${encodeURIComponent(filesCurrentPath)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || "无法读取文件夹");
+        filesParentPath = data.parent || null;
+        els.filesBreadcrumb.textContent = filesCurrentPath
+          ? (filesCurrentPath.split(/[\\/]/).pop() || filesCurrentPath)
+          : t("nav.files");
+        els.filesBackBtn.hidden = !filesParentPath;
+        els.filesZipBtn.hidden = !filesCurrentPath;
+        els.filesZipBtn.dataset.path = filesCurrentPath;
+        const rows = (data.entries || []).map((entry) => {
+          const safeName = esc(entry.name);
+          const url = `/api/file?path=${encodeURIComponent(entry.path)}`;
+          if (entry.is_dir) {
+            return `<button class="files-row" type="button" data-files-open="${esc(entry.path)}"><span class="files-icon">📁</span><span class="files-name">${safeName}</span><span class="files-size">文件夹</span></button>`;
+          }
+          return `<div class="files-row"><span class="files-icon">📄</span><a class="files-name" href="${esc(url)}" target="_blank" rel="noopener">${safeName}</a><span class="files-size">${fmtBytes(entry.size)}</span><a class="files-dl btn secondary history-mini" href="${esc(url)}" download>⬇</a></div>`;
+        }).join("");
+        els.filesList.innerHTML = rows || `<div class="import-note">${esc(t("files.empty"))}</div>`;
+      } catch (error) {
+        setStatus(error.message || String(error), true);
       }
     }
     function setTheme(theme) {
@@ -4368,10 +4441,21 @@
     els.importPageBtn.addEventListener("click", () => setPage("import"));
     els.viewerPageBtn.addEventListener("click", () => setPage("viewer"));
     els.matrixPageBtn.addEventListener("click", () => setPage("matrix"));
+    els.filesPageBtn?.addEventListener("click", () => setPage("files"));
     els.mobileImportPageBtn?.addEventListener("click", () => setPage("import"));
     els.mobileViewerPageBtn?.addEventListener("click", () => setPage("viewer"));
     els.mobileMatrixPageBtn?.addEventListener("click", () => setPage("matrix"));
+    els.mobileFilesPageBtn?.addEventListener("click", () => setPage("files"));
     els.mobileChannelBtn?.addEventListener("click", openChannelModal);
+    els.filesList.addEventListener("click", (event) => {
+      const dir = event.target.closest("[data-files-open]");
+      if (dir) renderFiles(dir.dataset.filesOpen);
+    });
+    els.filesBackBtn?.addEventListener("click", () => { if (filesParentPath) renderFiles(filesParentPath); });
+    els.filesZipBtn?.addEventListener("click", () => {
+      const path = els.filesZipBtn.dataset.path || "";
+      if (path) window.open(`/api/zip?path=${encodeURIComponent(path)}`, "_blank");
+    });
     els.viewerToggle.addEventListener("click", () => els.viewerControls.classList.toggle("open"));
     els.themeBtn.addEventListener("click", toggleTheme);
     els.settingsBtn?.addEventListener("click", (event) => {

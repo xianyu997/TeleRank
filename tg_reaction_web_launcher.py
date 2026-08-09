@@ -25,7 +25,7 @@ if sys.platform == "darwin":
 
 APP_FILE = "tg_reaction_web.html"
 PREFERRED_PORT = 1717
-APP_VERSION = "2026-08-04-matrix-fix"
+APP_VERSION = "2026-08-09-file-browser"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
 INVALID_NAME_CHARS = '<>:"/\\|?*' if os.name == "nt" else ':/'
 
@@ -66,6 +66,27 @@ def default_archive_trash_root():
 
 PREFS_FILE = default_data_dir() / "preferences.json"
 ARCHIVE_ROOT = default_archive_root()
+
+
+def default_file_root():
+    """Root folder for the LAN file browser (phone access).
+
+    Priority: TELERANK_FILE_ROOT env > preferences["file_root"] > archive root.
+    """
+    override = os.environ.get("TELERANK_FILE_ROOT", "").strip()
+    if override:
+        return Path(override)
+    try:
+        if PREFS_FILE.exists():
+            data = json.loads(PREFS_FILE.read_text(encoding="utf-8"))
+            if data.get("file_root"):
+                return Path(data["file_root"])
+    except Exception:
+        pass
+    return ARCHIVE_ROOT
+
+
+FILE_ROOT = default_file_root()
 CHANNEL_NAME_HANDLE_HINTS = {
     # Add your channel name → handle mappings here
     # "Name": "handle",
@@ -195,6 +216,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         if path == "/api/preferences":
             self.send_json(load_preferences())
+            return
+        if path == "/api/files":
+            self.handle_files_browser()
+            return
+        if path == "/api/file":
+            self.handle_file_download()
+            return
+        if path == "/api/zip":
+            self.handle_zip_download()
             return
         if path == "/api/pick-folder":
             self.handle_pick_folder()
@@ -477,6 +507,121 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         self.send_file(Path(target))
 
+    def handle_files_browser(self):
+        """LAN file browser: list the archive root or a subfolder."""
+        parsed = urllib.parse.urlparse(self.path)
+        params = urllib.parse.parse_qs(parsed.query)
+        raw_path = params.get("path", [""])[0]
+        target = safe_file_root_path(raw_path or str(FILE_ROOT))
+        if target is None:
+            self.send_json({"ok": False, "error": "path is outside the archive"}, 403)
+            return
+        if not target.exists():
+            self.send_json({"ok": False, "error": "path does not exist"}, 404)
+            return
+        entries = []
+        if target.is_dir():
+            for child in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+                if child.name.startswith("."):
+                    continue
+                entries.append({
+                    "name": child.name,
+                    "path": str(child),
+                    "is_dir": child.is_dir(),
+                    "size": child.stat().st_size if child.is_file() else 0,
+                })
+        parent = str(target.parent) if target.resolve() != FILE_ROOT.resolve() else None
+        self.send_json({"ok": True, "root": str(target), "parent": parent, "entries": entries})
+
+    def handle_file_download(self):
+        """Serve any file under the archive root, with HTTP Range support for video."""
+        parsed = urllib.parse.urlparse(self.path)
+        params = urllib.parse.parse_qs(parsed.query)
+        raw_path = params.get("path", [""])[0]
+        target = safe_file_root_path(raw_path)
+        if target is None or not target.exists() or not target.is_file():
+            self.send_json({"ok": False, "error": "file not found"}, 404)
+            return
+        size = target.stat().st_size
+        content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+        if content_type.startswith("text/"):
+            content_type += "; charset=utf-8"
+        start, end = 0, size - 1
+        status = 200
+        range_header = self.headers.get("Range")
+        if range_header:
+            match = re.match(r"bytes=(\d*)-(\d*)", range_header)
+            if match:
+                start = int(match.group(1)) if match.group(1) else 0
+                end = int(match.group(2)) if match.group(2) else size - 1
+                end = min(end, size - 1)
+                if start >= size:
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{size}")
+                    self.end_headers()
+                    return
+                status = 206
+        length = end - start + 1
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(length))
+        self.send_header("Accept-Ranges", "bytes")
+        if status == 206:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        with open(target, "rb") as handle:
+            handle.seek(start)
+            remaining = length
+            while remaining > 0:
+                chunk = handle.read(min(256 * 1024, remaining))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                remaining -= len(chunk)
+
+    def handle_zip_download(self):
+        """Zip a folder/file under the archive root for phone download."""
+        parsed = urllib.parse.urlparse(self.path)
+        params = urllib.parse.parse_qs(parsed.query)
+        raw_path = params.get("path", [""])[0]
+        target = safe_file_root_path(raw_path)
+        if target is None or not target.exists():
+            self.send_json({"ok": False, "error": "path not found"}, 404)
+            return
+        import tempfile
+        import zipfile
+
+        files_to_zip = [path for path in target.rglob("*") if path.is_file()] if target.is_dir() else [target]
+        total_size = sum(path.stat().st_size for path in files_to_zip)
+        if total_size > 4 * 1024 * 1024 * 1024:
+            self.send_json({"ok": False, "error": "folder is too large to zip (over 4GB); download files individually instead"}, 400)
+            return
+
+        fd, tmp = tempfile.mkstemp(suffix=".zip", dir=str(target.parent))
+        os.close(fd)
+        try:
+            base = target.name or "archive"
+            with zipfile.ZipFile(tmp, "w", zipfile.ZIP_STORED, allowZip64=True) as zf:
+                for path in sorted(files_to_zip):
+                    if target.is_dir():
+                        zf.write(path, arcname=str(Path(base) / path.relative_to(target)))
+                    else:
+                        zf.write(path, arcname=base)
+            data_size = os.path.getsize(tmp)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/zip")
+            self.send_header("Content-Length", str(data_size))
+            self.send_header("Content-Disposition", f'attachment; filename="{base}.zip"')
+            self.end_headers()
+            with open(tmp, "rb") as handle:
+                shutil.copyfileobj(handle, self.wfile)
+        finally:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+
     def shutdown_server(self):
         time.sleep(0.2)
         self.server.shutdown()
@@ -575,6 +720,34 @@ def is_under_archive_root(root):
         return False
     except ValueError:
         return False
+
+
+def safe_archive_path(raw):
+    """Resolve a path and ensure it stays inside the archive root (or is the root)."""
+    if not raw:
+        return None
+    try:
+        candidate = Path(raw).expanduser().resolve()
+        root = ARCHIVE_ROOT.resolve()
+        if candidate == root or root in candidate.parents:
+            return candidate
+    except (OSError, RuntimeError):
+        pass
+    return None
+
+
+def safe_file_root_path(raw):
+    """Resolve a path and ensure it stays inside the file-browser root (or is the root)."""
+    if not raw:
+        return None
+    try:
+        candidate = Path(raw).expanduser().resolve()
+        root = FILE_ROOT.resolve()
+        if candidate == root or root in candidate.parents:
+            return candidate
+    except (OSError, RuntimeError):
+        pass
+    return None
 
 
 def delete_archived_import(raw_path):
